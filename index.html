@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sruti Mirror</title>
+<meta name="description" content="A pitch tuner for Carnatic vocal practice — just-intonation targets, a synthesised tanpura, and note-by-note feedback on what to fix.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#x1FA95;</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1>Sruti Mirror</h1>
+      <p class="tagline">A tuner for Carnatic vocal practice. Sing against the tanpura &#8212; the needle shows where your swara sits, and the line beneath it tells you what to do about it.</p>
+    </div>
+    <div class="sruti-chip">
+      <div>
+        <div class="lbl">Adhara Shadja</div>
+        <div class="val">A&#9839;<sub style="font-size:.55em">3</sub></div>
+      </div>
+      <div style="width:1px;align-self:stretch;background:var(--line-soft)"></div>
+      <div>
+        <div class="lbl">Sa</div>
+        <div class="hz">233.08 Hz</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="rail">
+    <div class="segmented" role="group" aria-label="Practice cut">
+      <button id="m-tuner" aria-pressed="true">Free tuner</button>
+      <button id="m-sapasa" aria-pressed="false">Sa&#8202;&#183;&#8202;Pa&#8202;&#183;&#8202;Sa</button>
+      <button id="m-sarali" aria-pressed="false">Sarali Varisai</button>
+    </div>
+    <button class="btn primary" id="mic-btn"><span class="dot" id="mic-dot"></span><span id="mic-label">Turn on mic</span></button>
+    <button class="btn" id="tanpura-btn" aria-pressed="false">Tanpura</button>
+    <div class="vol"><span>Drone</span><input type="range" id="vol" min="0" max="100" value="45" aria-label="Tanpura volume"></div>
+    <select class="sel" id="mic-select" aria-label="Microphone input"><option value="">Default microphone</option></select>
+  </div>
+
+  <div class="warn" id="warn"></div>
+
+  <section class="panel">
+    <div class="readout">
+      <div class="side">
+        <div class="k">Heard</div>
+        <div class="v big" id="hz-out">&#8212;&#8202;&#8202;Hz</div>
+        <div class="v" id="oct-out" style="font-size:12px">quiet</div>
+      </div>
+
+      <div class="swara" id="swara">
+        <div class="glyph" id="glyph">Sa</div>
+        <div class="deva" id="deva">&#2360;</div>
+        <div class="ratio" id="ratio">1 : 1 &#183; 233.08 Hz</div>
+      </div>
+
+      <div class="side right">
+        <div class="k">Deviation</div>
+        <div class="v big" id="cents-out">&#8212;</div>
+        <div class="v" id="dir-out" style="font-size:12px">cents</div>
+      </div>
+    </div>
+
+    <div class="ribbon-wrap">
+      <div class="ribbon idle" id="ribbon">
+        <div class="band"></div>
+        <div class="ticks" id="ticks"></div>
+        <div class="trail" id="trail"></div>
+        <div class="needle" id="needle"></div>
+      </div>
+      <div class="ribbon-legend"><span>Flat &#8212; komal side</span><span>Sruti</span><span>Sharp &#8212; tivra side</span></div>
+    </div>
+
+    <div class="coach" id="coach" data-tone="idle">
+      <div class="coach-line" id="coach-line">Turn on the mic, then sing Sa</div>
+      <div class="coach-sub" id="coach-sub">Start the tanpura first so you have something to tune against.</div>
+    </div>
+
+    <div class="hold">
+      <span class="lvl-lbl">Input</span>
+      <div class="level"><i id="level-fill"></i></div>
+      <div class="track"><div class="fill" id="hold-fill"></div></div>
+      <button class="btn" id="hear-btn">Hear this swara</button>
+      <button class="btn" id="skip-btn" hidden>Skip</button>
+    </div>
+  </section>
+
+  <div class="ladder-head">
+    <h2 id="cut-title">The twelve swarasthanas</h2>
+    <div class="meta" id="cut-meta">Free tuner &#183; nearest swara in A&#9839; sruti &#183; just intonation</div>
+  </div>
+  <div class="ladder" id="ladder"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="st-hit">0<span style="font-size:.6em;color:var(--text-3)">/0</span></div><div class="l">Swaras landed</div></div>
+    <div class="stat"><div class="n" id="st-avg">&#8212;</div><div class="l">Avg. error &#162;</div></div>
+    <div class="stat"><div class="n" id="st-steady">&#8212;</div><div class="l">Wobble &#162;</div></div>
+    <div class="stat"><div class="n" id="st-run">&#8212;</div><div class="l">Run</div></div>
+  </div>
+
+  <section class="report" id="report" hidden>
+    <h2>What to work on</h2>
+    <div id="patterns"></div>
+    <div class="rc" id="rc"></div>
+  </section>
+
+  <div class="rail">
+    <div class="segmented" role="group" aria-label="Temperament">
+      <button id="t-just" aria-pressed="true">Just intonation</button>
+      <button id="t-equal" aria-pressed="false">Equal temperament</button>
+    </div>
+    <button class="btn" id="reset-btn">Reset run</button>
+  </div>
+
+  <p class="note">
+    <b>Just intonation is the default</b> because that is what a tanpura enforces. Against a drone, Ga&#8323; sits at 5:4 &#8212; about 386&#162; above Sa, a good 14&#162; below where a fretted guitar puts it. Ni&#8323; at 15:8 is 12&#162; flat of equal temperament. If your ear is set by the guitar, switch above and watch the two targets move.
+  </p>
+  <p class="note">
+    <b>Wear headphones.</b> The tanpura leaking back into the mic will pull the needle toward Sa and Pa. Echo cancellation is on, but it is not perfect on open speakers. If macOS has grabbed your iPhone as the input, pick the built-in mic from the dropdown above.
+  </p>
+
+  <footer>
+    Sarali Varisai is set in Mayamalavagowla &#8212; S R&#8321; G&#8323; M&#8321; P D&#8321; N&#8323; S&#775; &#8212; the scale beginners are given first because its symmetric semitones train the ear on both sides of the tetrachord. Pitch tracked by normalised autocorrelation; tanpura synthesised by Karplus&#8211;Strong.
+  </footer>
+</div>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
