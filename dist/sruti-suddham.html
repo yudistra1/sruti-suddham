@@ -73,6 +73,7 @@
   }
 
   *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
   /* The UA rule for [hidden] loses to any author `display`, and several things
      here are flex containers that start out hidden. */
   [hidden]{ display:none !important; }
@@ -84,7 +85,11 @@
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{ max-width:800px; margin:0 auto; padding:28px 20px 56px; display:flex; flex-direction:column; gap:18px; }
+  .wrap{
+    max-width:800px; margin:0 auto;
+    padding:28px max(20px, env(safe-area-inset-right)) calc(56px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    display:flex; flex-direction:column; gap:18px;
+  }
 
   /* ---------- masthead ---------- */
   .masthead{
@@ -169,7 +174,7 @@
   .readout .side{ display:flex; flex-direction:column; gap:3px; }
   .readout .side.right{ align-items:flex-end; text-align:right; }
   .k{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
-  .v{ font-family:var(--fm); font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-2); }
+  .v{ font-family:var(--fm); font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-2); white-space:nowrap; }
   .v.big{ font-size:22px; color:var(--text); letter-spacing:-.01em; }
 
   .swara{ text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:152px; }
@@ -179,7 +184,7 @@
   }
   .swara .glyph sub{ font-size:.42em; font-weight:400; letter-spacing:0; vertical-align:baseline; color:var(--text-2); }
   .swara .deva{ font-size:17px; color:var(--brass); line-height:1.2; }
-  .swara .ratio{ font-family:var(--fm); font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+  .swara .ratio{ font-family:var(--fm); font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; white-space:nowrap; }
   .swara.intune .glyph{ color:var(--pine); }
 
   .ribbon-wrap{ display:flex; flex-direction:column; gap:7px; }
@@ -222,7 +227,11 @@
   .needle.intune{ background:var(--pine); box-shadow:0 0 0 5px color-mix(in srgb, var(--pine) 22%, transparent); }
   .ribbon.idle .needle{ opacity:.35; }
   @media (prefers-reduced-motion: reduce){ .needle{ transition:none; } }
-  .ribbon-legend{ display:flex; justify-content:space-between; font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+  .ribbon-legend{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3);
+  }
+  .ribbon-legend span{ white-space:nowrap; }
 
   /* ---------- coach ---------- */
   .coach{
@@ -303,6 +312,62 @@
   .chip.ok{ border-color:color-mix(in srgb, var(--pine) 45%, var(--line)); color:var(--pine); background:color-mix(in srgb, var(--pine) 9%, var(--surface)); }
   @media (max-width:560px){ .rc-row{ grid-template-columns:52px 66px 1fr; gap:9px; padding:10px; } }
 
+
+  /* ---------- in-app browser notice ---------- */
+  .inapp{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    border:1px solid color-mix(in srgb, var(--brass) 45%, var(--line));
+    background:color-mix(in srgb, var(--brass) 9%, var(--surface));
+    border-radius:2px; padding:12px 14px; font-size:13px; line-height:1.5;
+  }
+  .inapp b{ font-weight:600; }
+  .inapp .btn{ flex:none; }
+
+  /* ---------- phones ----------
+     Touch targets, iOS's zoom-on-focus rule (any control under 16px pulls the
+     whole page in when tapped), and the two places the layout got tight. */
+  @media (pointer: coarse){
+    .btn, .segmented button{ min-height:44px; }
+    select.sel, .tonic-sel.tonic-oct{ font-size:16px; }
+    select.sel, .tonic-sel{ min-height:44px; }
+    .tonic-picker{ align-items:center; }
+    input[type=range]{ height:28px; }
+    .btn, .segmented button, select.sel, .tonic-sel, input[type=range]{ touch-action:manipulation; }
+  }
+
+  @media (max-width:620px){
+    /* Three columns is too many on a phone: give the swara the full width and
+       sit the two readouts under it. */
+    .readout{
+      grid-template-columns:1fr 1fr;
+      grid-template-areas:"swara swara" "left right";
+      gap:12px;
+    }
+    .swara{ grid-area:swara; min-width:0; }
+    .readout .side:first-child{ grid-area:left; }
+    .readout .side.right{ grid-area:right; }
+    .v.big{ font-size:19px; }
+    .swara .glyph{ font-size:clamp(38px,13vw,54px); }
+    .k{ font-size:9px; letter-spacing:.1em; }
+    .panel{ padding:16px 14px 14px; }
+    .coach-line{ font-size:17px; }
+    .legend-detail{ display:none; }
+    .ribbon-legend{ letter-spacing:.1em; }
+    .tick-label{ font-size:9px; }
+    .hold{ flex-wrap:wrap; }
+    .hold .track{ order:3; flex-basis:100%; }
+    .stats{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .rc-row{ grid-template-columns:56px 62px 1fr; }
+  }
+
+  @media (max-width:400px){
+    .wrap{ padding-top:20px; gap:14px; }
+    h1{ font-size:26px; }
+    .tagline{ font-size:13px; }
+    .masthead{ gap:12px; }
+    .sruti-chip{ width:100%; justify-content:space-between; }
+  }
+
   .note{ font-size:12.5px; color:var(--text-2); line-height:1.6; border-left:2px solid var(--brass-soft); padding-left:12px; }
   .note b{ color:var(--text); font-weight:600; }
   .warn{ display:none; font-size:13px; color:var(--kumkum);
@@ -316,6 +381,11 @@
 </head>
 <body>
 <div class="wrap">
+
+  <div class="inapp" id="inapp" hidden>
+    <div><b>Open this in your browser.</b> In-app browsers often block microphone access, so the tuner may not be able to hear you here.</div>
+    <button class="btn" id="copy-link" type="button">Copy link</button>
+  </div>
 
   <header class="masthead">
     <div>
@@ -380,7 +450,7 @@
         <div class="trail" id="trail"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="ribbon-legend"><span>Flat &#8212; komal side</span><span>Sruti</span><span>Sharp &#8212; tivra side</span></div>
+      <div class="ribbon-legend"><span>Flat<span class="legend-detail"> &#8212; komal side</span></span><span>Sruti</span><span>Sharp<span class="legend-detail"> &#8212; tivra side</span></span></div>
     </div>
 
     <div class="coach" id="coach" data-tone="idle">
@@ -1662,6 +1732,8 @@ function start() {
     tanpuraButton: $('tanpura-btn'),
     volume: $('vol'),
     warning: $('warn'),
+    inApp: $('inapp'),
+    copyLink: $('copy-link'),
     hertz: $('hz-out'),
     octave: $('oct-out'),
     cents: $('cents-out'),
@@ -1968,6 +2040,62 @@ function start() {
     el.tonicOctave.addEventListener('change', onChange);
   }
 
+  /* --------------------------------------------------------- the platform */
+
+  const ua = navigator.userAgent || '';
+  const isMac = /Mac/.test(ua) && !/iPhone|iPad|iPod/.test(ua);
+  const isIOS = /iPhone|iPad|iPod/.test(ua)
+    || (/Mac/.test(ua) && navigator.maxTouchPoints > 1); // iPadOS reports as Mac
+
+  /** Why the meter might be empty, worded for the machine you are actually on. */
+  function quietAdvice() {
+    if (isMac) {
+      return 'The input meter is empty. If macOS handed the mic to another device, pick the '
+        + 'right one from the dropdown.';
+    }
+    if (isIOS) {
+      return 'The input meter is empty. Check that this page has microphone permission, and '
+        + 'that the phone is not muted by the side switch.';
+    }
+    return 'The input meter is empty. Check that this page has microphone permission, or pick '
+      + 'a different input from the dropdown.';
+  }
+
+  /**
+   * Links opened from LinkedIn, Instagram and friends land in an embedded
+   * webview rather than the real browser, and those frequently refuse
+   * getUserMedia outright. Better to say so up front than to let someone press
+   * the mic button and watch nothing happen.
+   */
+  function isInAppBrowser() {
+    if (/FBAN|FBAV|Instagram|LinkedInApp|\bLine\/|Twitter|Snapchat|Pinterest|MicroMessenger/i.test(ua)) {
+      return true;
+    }
+    // An iOS webview looks like Safari minus the Safari token; the named
+    // alternative browsers carry their own.
+    if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)) {
+      return true;
+    }
+    return false;
+  }
+
+  function setUpInAppNotice() {
+    if (!isInAppBrowser()) return;
+    el.inApp.hidden = false;
+    el.copyLink.addEventListener('click', async () => {
+      const url = window.location.href;
+      try {
+        await navigator.clipboard.writeText(url);
+        el.copyLink.textContent = 'Copied';
+      } catch {
+        // Clipboard is often blocked in these webviews too — show it to select.
+        window.prompt('Copy this link and open it in your browser:', url);
+        return;
+      }
+      setTimeout(() => { el.copyLink.textContent = 'Copy link'; }, 2000);
+    });
+  }
+
   /* ------------------------------------------------------------- controls */
 
   el.modeTuner.addEventListener('click', () => setMode('tuner'));
@@ -2117,9 +2245,7 @@ function start() {
       }
       if (now > state.messageUntil && !(state.drill && state.drill.finished)) {
         if (state.detector.rms < 0.004) {
-          say('Nothing coming in',
-            'The input meter is empty. If macOS handed the mic to another device, pick the right '
-            + 'one from the dropdown.', 'idle');
+          say('Nothing coming in', quietAdvice(), 'idle');
         } else {
           promptForTarget();
         }
@@ -2192,12 +2318,21 @@ function start() {
     }
   }
 
+  // Returning from the background leaves the context suspended on iOS, which
+  // silences the tanpura and stalls analysis until something resumes it.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.audio && state.audio.state === 'suspended') {
+      state.audio.resume().catch(() => { /* needs a gesture; the next tap does it */ });
+    }
+  });
+
   if (navigator.mediaDevices?.addEventListener) {
     navigator.mediaDevices.addEventListener('devicechange', () => {
       if (state.mic && state.mic.active) populateDevices();
     });
   }
 
+  setUpInAppNotice();
   buildTonicPicker();
   setMode('tuner');
   requestAnimationFrame(loop);

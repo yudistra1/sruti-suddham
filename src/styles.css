@@ -60,6 +60,7 @@
   }
 
   *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
   /* The UA rule for [hidden] loses to any author `display`, and several things
      here are flex containers that start out hidden. */
   [hidden]{ display:none !important; }
@@ -71,7 +72,11 @@
     line-height:1.5;
     -webkit-font-smoothing:antialiased;
   }
-  .wrap{ max-width:800px; margin:0 auto; padding:28px 20px 56px; display:flex; flex-direction:column; gap:18px; }
+  .wrap{
+    max-width:800px; margin:0 auto;
+    padding:28px max(20px, env(safe-area-inset-right)) calc(56px + env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+    display:flex; flex-direction:column; gap:18px;
+  }
 
   /* ---------- masthead ---------- */
   .masthead{
@@ -156,7 +161,7 @@
   .readout .side{ display:flex; flex-direction:column; gap:3px; }
   .readout .side.right{ align-items:flex-end; text-align:right; }
   .k{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
-  .v{ font-family:var(--fm); font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-2); }
+  .v{ font-family:var(--fm); font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-2); white-space:nowrap; }
   .v.big{ font-size:22px; color:var(--text); letter-spacing:-.01em; }
 
   .swara{ text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:152px; }
@@ -166,7 +171,7 @@
   }
   .swara .glyph sub{ font-size:.42em; font-weight:400; letter-spacing:0; vertical-align:baseline; color:var(--text-2); }
   .swara .deva{ font-size:17px; color:var(--brass); line-height:1.2; }
-  .swara .ratio{ font-family:var(--fm); font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+  .swara .ratio{ font-family:var(--fm); font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; white-space:nowrap; }
   .swara.intune .glyph{ color:var(--pine); }
 
   .ribbon-wrap{ display:flex; flex-direction:column; gap:7px; }
@@ -209,7 +214,11 @@
   .needle.intune{ background:var(--pine); box-shadow:0 0 0 5px color-mix(in srgb, var(--pine) 22%, transparent); }
   .ribbon.idle .needle{ opacity:.35; }
   @media (prefers-reduced-motion: reduce){ .needle{ transition:none; } }
-  .ribbon-legend{ display:flex; justify-content:space-between; font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+  .ribbon-legend{
+    display:flex; justify-content:space-between; gap:12px;
+    font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3);
+  }
+  .ribbon-legend span{ white-space:nowrap; }
 
   /* ---------- coach ---------- */
   .coach{
@@ -289,6 +298,62 @@
   .chip.bad{ border-color:color-mix(in srgb, var(--kumkum) 45%, var(--line)); color:var(--kumkum); background:color-mix(in srgb, var(--kumkum) 9%, var(--surface)); }
   .chip.ok{ border-color:color-mix(in srgb, var(--pine) 45%, var(--line)); color:var(--pine); background:color-mix(in srgb, var(--pine) 9%, var(--surface)); }
   @media (max-width:560px){ .rc-row{ grid-template-columns:52px 66px 1fr; gap:9px; padding:10px; } }
+
+
+  /* ---------- in-app browser notice ---------- */
+  .inapp{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    border:1px solid color-mix(in srgb, var(--brass) 45%, var(--line));
+    background:color-mix(in srgb, var(--brass) 9%, var(--surface));
+    border-radius:2px; padding:12px 14px; font-size:13px; line-height:1.5;
+  }
+  .inapp b{ font-weight:600; }
+  .inapp .btn{ flex:none; }
+
+  /* ---------- phones ----------
+     Touch targets, iOS's zoom-on-focus rule (any control under 16px pulls the
+     whole page in when tapped), and the two places the layout got tight. */
+  @media (pointer: coarse){
+    .btn, .segmented button{ min-height:44px; }
+    select.sel, .tonic-sel.tonic-oct{ font-size:16px; }
+    select.sel, .tonic-sel{ min-height:44px; }
+    .tonic-picker{ align-items:center; }
+    input[type=range]{ height:28px; }
+    .btn, .segmented button, select.sel, .tonic-sel, input[type=range]{ touch-action:manipulation; }
+  }
+
+  @media (max-width:620px){
+    /* Three columns is too many on a phone: give the swara the full width and
+       sit the two readouts under it. */
+    .readout{
+      grid-template-columns:1fr 1fr;
+      grid-template-areas:"swara swara" "left right";
+      gap:12px;
+    }
+    .swara{ grid-area:swara; min-width:0; }
+    .readout .side:first-child{ grid-area:left; }
+    .readout .side.right{ grid-area:right; }
+    .v.big{ font-size:19px; }
+    .swara .glyph{ font-size:clamp(38px,13vw,54px); }
+    .k{ font-size:9px; letter-spacing:.1em; }
+    .panel{ padding:16px 14px 14px; }
+    .coach-line{ font-size:17px; }
+    .legend-detail{ display:none; }
+    .ribbon-legend{ letter-spacing:.1em; }
+    .tick-label{ font-size:9px; }
+    .hold{ flex-wrap:wrap; }
+    .hold .track{ order:3; flex-basis:100%; }
+    .stats{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .rc-row{ grid-template-columns:56px 62px 1fr; }
+  }
+
+  @media (max-width:400px){
+    .wrap{ padding-top:20px; gap:14px; }
+    h1{ font-size:26px; }
+    .tagline{ font-size:13px; }
+    .masthead{ gap:12px; }
+    .sruti-chip{ width:100%; justify-content:space-between; }
+  }
 
   .note{ font-size:12.5px; color:var(--text-2); line-height:1.6; border-left:2px solid var(--brass-soft); padding-left:12px; }
   .note b{ color:var(--text); font-weight:600; }

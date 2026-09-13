@@ -14,6 +14,10 @@ distinguish the four quite different things that go wrong with a held note.
 **[Try it →](https://yudistra1.github.io/sruti-suddham/)** (needs a microphone;
 headphones strongly recommended)
 
+Works on phones as well as desktop. Open it in a real browser rather than the
+one embedded in LinkedIn or Instagram — those frequently refuse microphone
+access, and the page will say so if it detects one.
+
 ## What it does
 
 Pick your sruti — any of the twelve notes across three octaves — and everything
@@ -156,6 +160,11 @@ same top-level name, rather than emitting a silently broken file.
 - **macOS Continuity.** macOS will quietly hand the default input to a nearby
   iPhone, which adds latency and heavy processing. There is a device picker in
   the toolbar for this reason; it is usually what you want.
+- **In-app browsers.** Links opened inside LinkedIn, Instagram and similar apps
+  land in an embedded webview, which often denies `getUserMedia` outright. The
+  page detects the common ones and asks you to open it properly instead.
+- **iOS silent switch.** With the hardware switch on, iOS mutes Web Audio, so
+  the tanpura goes silent with no error. Nothing the page can do about it.
 - **Monophonic only.** One voice, no accompaniment.
 - **Octave range.** The tonic picker covers octaves 2–4, which spans most voices
   but not all of them.

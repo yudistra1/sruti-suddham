@@ -15,6 +15,11 @@
 <body>
 <div class="wrap">
 
+  <div class="inapp" id="inapp" hidden>
+    <div><b>Open this in your browser.</b> In-app browsers often block microphone access, so the tuner may not be able to hear you here.</div>
+    <button class="btn" id="copy-link" type="button">Copy link</button>
+  </div>
+
   <header class="masthead">
     <div>
       <h1>Sruti Suddham</h1>
@@ -78,7 +83,7 @@
         <div class="trail" id="trail"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="ribbon-legend"><span>Flat &#8212; komal side</span><span>Sruti</span><span>Sharp &#8212; tivra side</span></div>
+      <div class="ribbon-legend"><span>Flat<span class="legend-detail"> &#8212; komal side</span></span><span>Sruti</span><span>Sharp<span class="legend-detail"> &#8212; tivra side</span></span></div>
     </div>
 
     <div class="coach" id="coach" data-tone="idle">

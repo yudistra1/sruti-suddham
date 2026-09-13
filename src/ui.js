@@ -43,6 +43,8 @@ export function start() {
     tanpuraButton: $('tanpura-btn'),
     volume: $('vol'),
     warning: $('warn'),
+    inApp: $('inapp'),
+    copyLink: $('copy-link'),
     hertz: $('hz-out'),
     octave: $('oct-out'),
     cents: $('cents-out'),
@@ -349,6 +351,62 @@ export function start() {
     el.tonicOctave.addEventListener('change', onChange);
   }
 
+  /* --------------------------------------------------------- the platform */
+
+  const ua = navigator.userAgent || '';
+  const isMac = /Mac/.test(ua) && !/iPhone|iPad|iPod/.test(ua);
+  const isIOS = /iPhone|iPad|iPod/.test(ua)
+    || (/Mac/.test(ua) && navigator.maxTouchPoints > 1); // iPadOS reports as Mac
+
+  /** Why the meter might be empty, worded for the machine you are actually on. */
+  function quietAdvice() {
+    if (isMac) {
+      return 'The input meter is empty. If macOS handed the mic to another device, pick the '
+        + 'right one from the dropdown.';
+    }
+    if (isIOS) {
+      return 'The input meter is empty. Check that this page has microphone permission, and '
+        + 'that the phone is not muted by the side switch.';
+    }
+    return 'The input meter is empty. Check that this page has microphone permission, or pick '
+      + 'a different input from the dropdown.';
+  }
+
+  /**
+   * Links opened from LinkedIn, Instagram and friends land in an embedded
+   * webview rather than the real browser, and those frequently refuse
+   * getUserMedia outright. Better to say so up front than to let someone press
+   * the mic button and watch nothing happen.
+   */
+  function isInAppBrowser() {
+    if (/FBAN|FBAV|Instagram|LinkedInApp|\bLine\/|Twitter|Snapchat|Pinterest|MicroMessenger/i.test(ua)) {
+      return true;
+    }
+    // An iOS webview looks like Safari minus the Safari token; the named
+    // alternative browsers carry their own.
+    if (/iPhone|iPad|iPod/.test(ua) && !/Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)) {
+      return true;
+    }
+    return false;
+  }
+
+  function setUpInAppNotice() {
+    if (!isInAppBrowser()) return;
+    el.inApp.hidden = false;
+    el.copyLink.addEventListener('click', async () => {
+      const url = window.location.href;
+      try {
+        await navigator.clipboard.writeText(url);
+        el.copyLink.textContent = 'Copied';
+      } catch {
+        // Clipboard is often blocked in these webviews too — show it to select.
+        window.prompt('Copy this link and open it in your browser:', url);
+        return;
+      }
+      setTimeout(() => { el.copyLink.textContent = 'Copy link'; }, 2000);
+    });
+  }
+
   /* ------------------------------------------------------------- controls */
 
   el.modeTuner.addEventListener('click', () => setMode('tuner'));
@@ -498,9 +556,7 @@ export function start() {
       }
       if (now > state.messageUntil && !(state.drill && state.drill.finished)) {
         if (state.detector.rms < 0.004) {
-          say('Nothing coming in',
-            'The input meter is empty. If macOS handed the mic to another device, pick the right '
-            + 'one from the dropdown.', 'idle');
+          say('Nothing coming in', quietAdvice(), 'idle');
         } else {
           promptForTarget();
         }
@@ -573,12 +629,21 @@ export function start() {
     }
   }
 
+  // Returning from the background leaves the context suspended on iOS, which
+  // silences the tanpura and stalls analysis until something resumes it.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && state.audio && state.audio.state === 'suspended') {
+      state.audio.resume().catch(() => { /* needs a gesture; the next tap does it */ });
+    }
+  });
+
   if (navigator.mediaDevices?.addEventListener) {
     navigator.mediaDevices.addEventListener('devicechange', () => {
       if (state.mic && state.mic.active) populateDevices();
     });
   }
 
+  setUpInAppNotice();
   buildTonicPicker();
   setMode('tuner');
   requestAnimationFrame(loop);
