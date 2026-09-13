@@ -1,0 +1,21 @@
+{
+  "name": "sruti-mirror",
+  "version": "1.0.0",
+  "description": "A pitch tuner for Carnatic vocal practice, with a synthesised tanpura and note-by-note feedback.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Saathwik Godela",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yudistra1/sruti-mirror.git"
+  },
+  "scripts": {
+    "start": "node tools/serve.js",
+    "test": "node --test \"test/**/*.test.js\"",
+    "build": "node tools/build.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
