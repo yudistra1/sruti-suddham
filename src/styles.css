@@ -60,6 +60,9 @@
   }
 
   *{ box-sizing:border-box; }
+  /* The UA rule for [hidden] loses to any author `display`, and several things
+     here are flex containers that start out hidden. */
+  [hidden]{ display:none !important; }
   body{
     background:var(--paper);
     color:var(--text);
