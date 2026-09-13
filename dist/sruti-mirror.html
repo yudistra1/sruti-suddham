@@ -1,0 +1,2101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sruti Mirror</title>
+<meta name="description" content="A pitch tuner for Carnatic vocal practice — just-intonation targets, a synthesised tanpura, and note-by-note feedback on what to fix.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='13' font-size='13'>&#x1FA95;</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+    --paper:      #e9ede6;
+    --surface:    #ffffff;
+    --surface-2:  #dfe5db;
+    --line:       #c4cdbe;
+    --line-soft:  #d7ded1;
+    --text:       #16211e;
+    --text-2:     #55635c;
+    --text-3:     #7d8a82;
+    --brass:      #a8721c;
+    --brass-soft: #e7cf9c;
+    --on-brass:   #ffffff;
+    --pine:       #237a53;
+    --indigo:     #2f6288;
+    --kumkum:     #a8342a;
+    --glow:       rgba(168,114,28,.16);
+    --shadow:     0 1px 0 rgba(16,26,24,.05), 0 12px 28px -18px rgba(16,26,24,.5);
+
+    --fd: "Fraunces", "Iowan Old Style", Georgia, serif;
+    --fs: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --fm: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:      #101a18;
+      --surface:    #16221f;
+      --surface-2:  #1d2c28;
+      --line:       #2c3d38;
+      --line-soft:  #223129;
+      --text:       #e6ece6;
+      --text-2:     #9aa8a1;
+      --text-3:     #74827b;
+      --brass:      #d9a545;
+      --brass-soft: #4a3a18;
+      --on-brass:   #151f14;
+      --pine:       #45b483;
+      --indigo:     #5e9ec9;
+      --kumkum:     #dd6a56;
+      --glow:       rgba(217,165,69,.14);
+      --shadow:     0 1px 0 rgba(0,0,0,.3), 0 16px 32px -20px rgba(0,0,0,.9);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:      #101a18;
+    --surface:    #16221f;
+    --surface-2:  #1d2c28;
+    --line:       #2c3d38;
+    --line-soft:  #223129;
+    --text:       #e6ece6;
+    --text-2:     #9aa8a1;
+    --text-3:     #74827b;
+    --brass:      #d9a545;
+    --brass-soft: #4a3a18;
+    --on-brass:   #151f14;
+    --pine:       #45b483;
+    --indigo:     #5e9ec9;
+    --kumkum:     #dd6a56;
+    --glow:       rgba(217,165,69,.14);
+    --shadow:     0 1px 0 rgba(0,0,0,.3), 0 16px 32px -20px rgba(0,0,0,.9);
+  }
+
+  *{ box-sizing:border-box; }
+  /* The UA rule for [hidden] loses to any author `display`, and several things
+     here are flex containers that start out hidden. */
+  [hidden]{ display:none !important; }
+  body{
+    background:var(--paper);
+    color:var(--text);
+    font-family:var(--fs);
+    font-size:15px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:800px; margin:0 auto; padding:28px 20px 56px; display:flex; flex-direction:column; gap:18px; }
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:16px; flex-wrap:wrap; padding-bottom:14px; border-bottom:1px solid var(--line);
+  }
+  h1{
+    font-family:var(--fd); font-optical-sizing:auto; font-weight:600;
+    font-size:clamp(28px,5vw,38px); letter-spacing:-.02em; margin:0; line-height:1; text-wrap:balance;
+  }
+  .tagline{ color:var(--text-2); font-size:13.5px; margin:6px 0 0; max-width:46ch; }
+  .sruti-chip{
+    display:flex; align-items:center; gap:10px;
+    border:1px solid var(--line); border-radius:2px; background:var(--surface);
+    padding:8px 12px; box-shadow:var(--shadow);
+  }
+  .sruti-chip .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); line-height:1.2; }
+  .sruti-chip .val{ font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1; color:var(--brass); }
+  .sruti-chip .hz{ font-family:var(--fm); font-size:11.5px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+
+  /* ---------- controls ---------- */
+  .rail{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .segmented{ display:flex; border:1px solid var(--line); border-radius:2px; overflow:hidden; background:var(--surface); }
+  .segmented button{
+    appearance:none; border:0; background:transparent; cursor:pointer;
+    font-family:var(--fs); font-size:13px; font-weight:500; color:var(--text-2);
+    padding:9px 14px; line-height:1.2; border-right:1px solid var(--line-soft);
+    transition:background .15s, color .15s;
+  }
+  .segmented button:last-child{ border-right:0; }
+  .segmented button[aria-pressed="true"]{ background:var(--brass); color:var(--on-brass); }
+  .segmented button:hover:not([aria-pressed="true"]){ background:var(--surface-2); color:var(--text); }
+  .segmented button:focus-visible{ outline:2px solid var(--brass); outline-offset:-2px; }
+
+  .btn{
+    appearance:none; cursor:pointer; font-family:var(--fs); font-size:13px; font-weight:500;
+    padding:9px 14px; border-radius:2px; border:1px solid var(--line);
+    background:var(--surface); color:var(--text);
+    display:inline-flex; align-items:center; gap:8px; transition:background .15s, border-color .15s;
+  }
+  .btn:hover{ background:var(--surface-2); }
+  .btn:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+  .btn.primary{ background:var(--brass); border-color:var(--brass); color:var(--on-brass); }
+  .btn.primary:hover{ filter:brightness(1.06); background:var(--brass); }
+  .btn[aria-pressed="true"]{ border-color:var(--brass); box-shadow:inset 0 0 0 1px var(--brass); }
+  .dot{ width:7px; height:7px; border-radius:50%; background:var(--text-3); flex:none; }
+  .dot.live{ background:var(--pine); box-shadow:0 0 0 3px color-mix(in srgb, var(--pine) 22%, transparent); }
+
+  .vol{ display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:2px; background:var(--surface); padding:7px 12px; }
+  .vol span{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+  input[type=range]{ width:92px; accent-color:var(--brass); }
+
+  select.sel{
+    appearance:none; font-family:var(--fs); font-size:12.5px; color:var(--text-2);
+    background:var(--surface); border:1px solid var(--line); border-radius:2px;
+    padding:9px 26px 9px 12px; max-width:230px; cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+    background-position:calc(100% - 15px) 50%, calc(100% - 11px) 50%;
+    background-size:4px 4px, 4px 4px; background-repeat:no-repeat;
+  }
+  select.sel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; }
+
+  /* ---------- meter panel ---------- */
+  .panel{
+    background:var(--surface); border:1px solid var(--line); border-radius:3px;
+    box-shadow:var(--shadow); padding:22px 22px 18px;
+    display:flex; flex-direction:column; gap:16px;
+  }
+  .readout{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:16px; }
+  .readout .side{ display:flex; flex-direction:column; gap:3px; }
+  .readout .side.right{ align-items:flex-end; text-align:right; }
+  .k{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+  .v{ font-family:var(--fm); font-size:15px; font-variant-numeric:tabular-nums; color:var(--text-2); }
+  .v.big{ font-size:22px; color:var(--text); letter-spacing:-.01em; }
+
+  .swara{ text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:152px; }
+  .swara .glyph{
+    font-family:var(--fd); font-optical-sizing:auto; font-weight:600;
+    font-size:clamp(46px,11vw,66px); line-height:.95; letter-spacing:-.02em; color:var(--text); transition:color .2s;
+  }
+  .swara .glyph sub{ font-size:.42em; font-weight:400; letter-spacing:0; vertical-align:baseline; color:var(--text-2); }
+  .swara .deva{ font-size:17px; color:var(--brass); line-height:1.2; }
+  .swara .ratio{ font-family:var(--fm); font-size:11px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+  .swara.intune .glyph{ color:var(--pine); }
+
+  .ribbon-wrap{ display:flex; flex-direction:column; gap:7px; }
+  .ribbon{
+    position:relative; height:64px; border:1px solid var(--line); border-radius:2px;
+    background:
+      linear-gradient(90deg,
+        color-mix(in srgb, var(--indigo) 13%, transparent) 0%,
+        transparent 38%, transparent 62%,
+        color-mix(in srgb, var(--kumkum) 13%, transparent) 100%),
+      var(--surface-2);
+    overflow:hidden;
+  }
+  .band{
+    position:absolute; top:0; bottom:0; left:50%; transform:translateX(-50%); width:16%;
+    background:color-mix(in srgb, var(--pine) 15%, transparent);
+    border-left:1px solid color-mix(in srgb, var(--pine) 35%, transparent);
+    border-right:1px solid color-mix(in srgb, var(--pine) 35%, transparent);
+  }
+  .ticks{ position:absolute; inset:0; }
+  .tick{ position:absolute; top:0; bottom:0; width:1px; background:var(--line); transform:translateX(-.5px); }
+  .tick.major{ background:var(--text-3); opacity:.5; }
+  .tick.center{ background:var(--pine); opacity:.9; width:1.5px; }
+  .tick-label{
+    position:absolute; bottom:5px; transform:translateX(-50%);
+    font-family:var(--fm); font-size:10px; color:var(--text-3); font-variant-numeric:tabular-nums;
+  }
+  .trail{
+    position:absolute; top:10px; height:3px; border-radius:2px;
+    background:color-mix(in srgb, var(--brass) 34%, transparent);
+    left:50%; width:0; transform:translateX(0);
+  }
+  .needle{
+    position:absolute; top:6px; bottom:20px; width:3px; border-radius:2px;
+    left:50%; transform:translateX(-50%); background:var(--text-3);
+    transition:left .07s linear, background .12s, box-shadow .12s;
+  }
+  .needle.flat{ background:var(--indigo); box-shadow:0 0 0 4px color-mix(in srgb, var(--indigo) 18%, transparent); }
+  .needle.sharp{ background:var(--kumkum); box-shadow:0 0 0 4px color-mix(in srgb, var(--kumkum) 18%, transparent); }
+  .needle.intune{ background:var(--pine); box-shadow:0 0 0 5px color-mix(in srgb, var(--pine) 22%, transparent); }
+  .ribbon.idle .needle{ opacity:.35; }
+  @media (prefers-reduced-motion: reduce){ .needle{ transition:none; } }
+  .ribbon-legend{ display:flex; justify-content:space-between; font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+
+  /* ---------- coach ---------- */
+  .coach{
+    border-left:3px solid var(--line); padding:10px 0 10px 14px;
+    display:flex; flex-direction:column; gap:2px; min-height:58px; justify-content:center;
+    transition:border-color .2s;
+  }
+  .coach-line{ font-family:var(--fd); font-weight:600; font-size:19px; line-height:1.25; letter-spacing:-.01em; text-wrap:balance; }
+  .coach-sub{ font-size:12.5px; color:var(--text-2); }
+  .coach[data-tone="good"]{ border-color:var(--pine); }
+  .coach[data-tone="good"] .coach-line{ color:var(--pine); }
+  .coach[data-tone="near"]{ border-color:var(--brass); }
+  .coach[data-tone="far"]{ border-color:var(--kumkum); }
+  .coach[data-tone="far"] .coach-line{ color:var(--kumkum); }
+  .coach[data-tone="idle"] .coach-line{ color:var(--text-2); }
+
+  .hold{ display:flex; align-items:center; gap:12px; }
+  .hold .track{ flex:1; height:4px; border-radius:2px; background:var(--surface-2); overflow:hidden; }
+  .hold .fill{ height:100%; width:0%; background:var(--pine); transition:width .09s linear; }
+  .level{ width:56px; height:4px; border-radius:2px; background:var(--surface-2); overflow:hidden; }
+  .level i{ display:block; height:100%; width:0%; background:var(--brass); transition:width .1s linear; }
+  .lvl-lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+
+  /* ---------- ladder ---------- */
+  .ladder-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .ladder-head h2{ font-family:var(--fd); font-weight:600; font-size:17px; margin:0; letter-spacing:-.01em; }
+  .ladder-head .meta{ font-size:12px; color:var(--text-2); }
+  .ladder{ display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:6px; }
+  @media (max-width:560px){ .ladder{ grid-template-columns:repeat(4, minmax(0,1fr)); } }
+  .step{
+    border:1px solid var(--line); border-radius:2px; background:var(--surface);
+    padding:8px 6px 7px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:1px; position:relative;
+  }
+  .step .s-name{ font-family:var(--fd); font-weight:600; font-size:16px; line-height:1.05; }
+  .step .s-name sub{ font-size:.5em; font-weight:400; color:var(--text-3); vertical-align:baseline; }
+  .step .s-hz{ font-family:var(--fm); font-size:9.5px; color:var(--text-3); font-variant-numeric:tabular-nums; }
+  .step[data-state="current"]{ border-color:var(--brass); box-shadow:inset 0 0 0 1px var(--brass), 0 0 0 4px var(--glow); }
+  .step[data-state="done"]{ background:color-mix(in srgb, var(--pine) 12%, var(--surface)); border-color:color-mix(in srgb, var(--pine) 40%, var(--line)); }
+  .step[data-state="done"] .s-hz{ color:var(--pine); }
+  .step[data-state="done"].wide{ background:color-mix(in srgb, var(--kumkum) 12%, var(--surface)); border-color:color-mix(in srgb, var(--kumkum) 40%, var(--line)); }
+  .step[data-state="done"].wide .s-hz{ color:var(--kumkum); }
+  .step .arc{ position:absolute; top:3px; right:5px; font-family:var(--fm); font-size:9px; color:var(--text-3); }
+
+  /* ---------- stats + report ---------- */
+  .stats{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); border-radius:3px; overflow:hidden; }
+  .stat{ background:var(--surface); padding:12px 14px; display:flex; flex-direction:column; gap:2px; }
+  .stat .n{ font-family:var(--fm); font-size:20px; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .stat .l{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+
+  .report{ display:flex; flex-direction:column; gap:12px; }
+  .report h2{ font-family:var(--fd); font-weight:600; font-size:19px; margin:0; letter-spacing:-.01em; }
+  .pattern{
+    border:1px solid var(--line); border-left:3px solid var(--brass); border-radius:2px;
+    background:var(--surface); padding:12px 14px; font-size:13.5px; line-height:1.55;
+  }
+  .pattern.good{ border-left-color:var(--pine); }
+  .pattern b{ font-weight:600; }
+  .rc{ border:1px solid var(--line); border-radius:3px; overflow:hidden; background:var(--surface); }
+  .rc-row{
+    display:grid; grid-template-columns:64px 74px 1fr; gap:12px; align-items:start;
+    padding:11px 14px; border-top:1px solid var(--line-soft);
+  }
+  .rc-row:first-child{ border-top:0; }
+  .rc-row.head{ background:var(--surface-2); padding:7px 14px; border-top:0; }
+  .rc-row.head span{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); }
+  .rc-sw{ font-family:var(--fd); font-weight:600; font-size:16px; line-height:1.2; }
+  .rc-sw sub{ font-size:.55em; font-weight:400; color:var(--text-3); vertical-align:baseline; }
+  .rc-c{ font-family:var(--fm); font-size:13.5px; font-variant-numeric:tabular-nums; }
+  .rc-c.ok{ color:var(--pine); } .rc-c.sharp{ color:var(--kumkum); } .rc-c.flat{ color:var(--indigo); }
+  .rc-note{ font-size:13px; line-height:1.5; color:var(--text-2); }
+  .rc-note b{ color:var(--text); font-weight:600; }
+  .chips{ display:flex; flex-wrap:wrap; gap:5px; margin-bottom:3px; }
+  .chip{
+    font-size:10.5px; letter-spacing:.04em; padding:2px 7px; border-radius:2px;
+    border:1px solid var(--line); color:var(--text-2); background:var(--surface-2);
+  }
+  .chip.bad{ border-color:color-mix(in srgb, var(--kumkum) 45%, var(--line)); color:var(--kumkum); background:color-mix(in srgb, var(--kumkum) 9%, var(--surface)); }
+  .chip.ok{ border-color:color-mix(in srgb, var(--pine) 45%, var(--line)); color:var(--pine); background:color-mix(in srgb, var(--pine) 9%, var(--surface)); }
+  @media (max-width:560px){ .rc-row{ grid-template-columns:52px 66px 1fr; gap:9px; padding:10px; } }
+
+  .note{ font-size:12.5px; color:var(--text-2); line-height:1.6; border-left:2px solid var(--brass-soft); padding-left:12px; }
+  .note b{ color:var(--text); font-weight:600; }
+  .warn{ display:none; font-size:13px; color:var(--kumkum);
+    border:1px solid color-mix(in srgb, var(--kumkum) 40%, var(--line));
+    background:color-mix(in srgb, var(--kumkum) 8%, var(--surface));
+    padding:10px 12px; border-radius:2px; }
+  .warn.show{ display:block; }
+  code{ font-family:var(--fm); font-size:.92em; background:var(--surface-2); padding:1px 5px; border-radius:2px; }
+  footer{ font-size:11.5px; color:var(--text-3); border-top:1px solid var(--line-soft); padding-top:12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div>
+      <h1>Sruti Mirror</h1>
+      <p class="tagline">A tuner for Carnatic vocal practice. Sing against the tanpura &#8212; the needle shows where your swara sits, and the line beneath it tells you what to do about it.</p>
+    </div>
+    <div class="sruti-chip">
+      <div>
+        <div class="lbl">Adhara Shadja</div>
+        <div class="val">A&#9839;<sub style="font-size:.55em">3</sub></div>
+      </div>
+      <div style="width:1px;align-self:stretch;background:var(--line-soft)"></div>
+      <div>
+        <div class="lbl">Sa</div>
+        <div class="hz">233.08 Hz</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="rail">
+    <div class="segmented" role="group" aria-label="Practice cut">
+      <button id="m-tuner" aria-pressed="true">Free tuner</button>
+      <button id="m-sapasa" aria-pressed="false">Sa&#8202;&#183;&#8202;Pa&#8202;&#183;&#8202;Sa</button>
+      <button id="m-sarali" aria-pressed="false">Sarali Varisai</button>
+    </div>
+    <button class="btn primary" id="mic-btn"><span class="dot" id="mic-dot"></span><span id="mic-label">Turn on mic</span></button>
+    <button class="btn" id="tanpura-btn" aria-pressed="false">Tanpura</button>
+    <div class="vol"><span>Drone</span><input type="range" id="vol" min="0" max="100" value="45" aria-label="Tanpura volume"></div>
+    <select class="sel" id="mic-select" aria-label="Microphone input"><option value="">Default microphone</option></select>
+  </div>
+
+  <div class="warn" id="warn"></div>
+
+  <section class="panel">
+    <div class="readout">
+      <div class="side">
+        <div class="k">Heard</div>
+        <div class="v big" id="hz-out">&#8212;&#8202;&#8202;Hz</div>
+        <div class="v" id="oct-out" style="font-size:12px">quiet</div>
+      </div>
+
+      <div class="swara" id="swara">
+        <div class="glyph" id="glyph">Sa</div>
+        <div class="deva" id="deva">&#2360;</div>
+        <div class="ratio" id="ratio">1 : 1 &#183; 233.08 Hz</div>
+      </div>
+
+      <div class="side right">
+        <div class="k">Deviation</div>
+        <div class="v big" id="cents-out">&#8212;</div>
+        <div class="v" id="dir-out" style="font-size:12px">cents</div>
+      </div>
+    </div>
+
+    <div class="ribbon-wrap">
+      <div class="ribbon idle" id="ribbon">
+        <div class="band"></div>
+        <div class="ticks" id="ticks"></div>
+        <div class="trail" id="trail"></div>
+        <div class="needle" id="needle"></div>
+      </div>
+      <div class="ribbon-legend"><span>Flat &#8212; komal side</span><span>Sruti</span><span>Sharp &#8212; tivra side</span></div>
+    </div>
+
+    <div class="coach" id="coach" data-tone="idle">
+      <div class="coach-line" id="coach-line">Turn on the mic, then sing Sa</div>
+      <div class="coach-sub" id="coach-sub">Start the tanpura first so you have something to tune against.</div>
+    </div>
+
+    <div class="hold">
+      <span class="lvl-lbl">Input</span>
+      <div class="level"><i id="level-fill"></i></div>
+      <div class="track"><div class="fill" id="hold-fill"></div></div>
+      <button class="btn" id="hear-btn">Hear this swara</button>
+      <button class="btn" id="skip-btn" hidden>Skip</button>
+    </div>
+  </section>
+
+  <div class="ladder-head">
+    <h2 id="cut-title">The twelve swarasthanas</h2>
+    <div class="meta" id="cut-meta">Free tuner &#183; nearest swara in A&#9839; sruti &#183; just intonation</div>
+  </div>
+  <div class="ladder" id="ladder"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="st-hit">0<span style="font-size:.6em;color:var(--text-3)">/0</span></div><div class="l">Swaras landed</div></div>
+    <div class="stat"><div class="n" id="st-avg">&#8212;</div><div class="l">Avg. error &#162;</div></div>
+    <div class="stat"><div class="n" id="st-steady">&#8212;</div><div class="l">Wobble &#162;</div></div>
+    <div class="stat"><div class="n" id="st-run">&#8212;</div><div class="l">Run</div></div>
+  </div>
+
+  <section class="report" id="report" hidden>
+    <h2>What to work on</h2>
+    <div id="patterns"></div>
+    <div class="rc" id="rc"></div>
+  </section>
+
+  <div class="rail">
+    <div class="segmented" role="group" aria-label="Temperament">
+      <button id="t-just" aria-pressed="true">Just intonation</button>
+      <button id="t-equal" aria-pressed="false">Equal temperament</button>
+    </div>
+    <button class="btn" id="reset-btn">Reset run</button>
+  </div>
+
+  <p class="note">
+    <b>Just intonation is the default</b> because that is what a tanpura enforces. Against a drone, Ga&#8323; sits at 5:4 &#8212; about 386&#162; above Sa, a good 14&#162; below where a fretted guitar puts it. Ni&#8323; at 15:8 is 12&#162; flat of equal temperament. If your ear is set by the guitar, switch above and watch the two targets move.
+  </p>
+  <p class="note">
+    <b>Wear headphones.</b> The tanpura leaking back into the mic will pull the needle toward Sa and Pa. Echo cancellation is on, but it is not perfect on open speakers. If macOS has grabbed your iPhone as the input, pick the built-in mic from the dropdown above.
+  </p>
+
+  <footer>
+    Sarali Varisai is set in Mayamalavagowla &#8212; S R&#8321; G&#8323; M&#8321; P D&#8321; N&#8323; S&#775; &#8212; the scale beginners are given first because its symmetric semitones train the ear on both sides of the tetrachord. Pitch tracked by normalised autocorrelation; tanpura synthesised by Karplus&#8211;Strong.
+  </footer>
+</div>
+<script>
+(() => {
+// ---- src/tuning.js -----------------------------------------------
+/**
+ * The musical model: swarasthanas, ratios, cuts, and the cents arithmetic
+ * everything else is measured in.
+ *
+ * Nothing in here touches the DOM or the Web Audio API, which is what makes
+ * it testable under plain Node.
+ */
+
+/** Adhara shadja. A#3 — a comfortable Sa for a male voice. */
+const TONIC_HZ = 233.08188;
+const TONIC_LABEL = 'A♯3';
+
+/**
+ * Just-intonation ratios for the twelve swarasthanas.
+ *
+ * These are the intervals a tanpura actually enforces. They are not the
+ * equal-tempered ones: Ga3 at 5/4 is ~386c, a good 14c below a guitar's
+ * major third, and Ni3 at 15/8 is ~1088c, 12c under the equal-tempered
+ * leading tone. Singers trained on fretted instruments tend to sit sharp
+ * on exactly these.
+ */
+const JUST_RATIOS = [
+  1, 16 / 15, 9 / 8, 6 / 5, 5 / 4, 4 / 3,
+  45 / 32, 3 / 2, 8 / 5, 5 / 3, 9 / 5, 15 / 8,
+];
+
+const RATIO_LABELS = [
+  '1:1', '16:15', '9:8', '6:5', '5:4', '4:3',
+  '45:32', '3:2', '8:5', '5:3', '9:5', '15:8',
+];
+
+/** The twelve swarasthanas, in semitone order from Sa. */
+const SWARASTHANAS = [
+  { name: 'Sa', variant: '', devanagari: 'स' },
+  { name: 'Ri', variant: '1', devanagari: 'रे' },
+  { name: 'Ri', variant: '2', devanagari: 'रे' },
+  { name: 'Ga', variant: '2', devanagari: 'ग' },
+  { name: 'Ga', variant: '3', devanagari: 'ग' },
+  { name: 'Ma', variant: '1', devanagari: 'म' },
+  { name: 'Ma', variant: '2', devanagari: 'म' },
+  { name: 'Pa', variant: '', devanagari: 'प' },
+  { name: 'Dha', variant: '1', devanagari: 'ध' },
+  { name: 'Dha', variant: '2', devanagari: 'ध' },
+  { name: 'Ni', variant: '2', devanagari: 'नि' },
+  { name: 'Ni', variant: '3', devanagari: 'नि' },
+];
+
+const INTERVAL_NAMES = [
+  'unison', 'semitone', 'whole tone', 'minor third', 'major third', 'fourth',
+  'tritone', 'fifth', 'minor sixth', 'major sixth', 'minor seventh', 'major seventh',
+];
+
+/** Mayamalavagowla — the scale every Carnatic beginner is handed first. */
+const MAYAMALAVAGOWLA = [0, 1, 4, 5, 7, 8, 11, 12];
+
+/**
+ * Practice cuts, as semitone offsets from Sa. Each runs up and back down,
+ * which is how varisai are actually sung.
+ */
+const CUTS = {
+  sapasa: {
+    id: 'sapasa',
+    title: 'Sa · Pa · Sa',
+    blurb: 'Ascend and descend the fifth — the tanpura’s own two notes',
+    steps: [0, 7, 12, 12, 7, 0],
+  },
+  sarali: {
+    id: 'sarali',
+    title: 'Sarali Varisai · Mayamalavagowla',
+    blurb: 'Arohana and avarohana — sixteen swaras',
+    steps: MAYAMALAVAGOWLA.concat(MAYAMALAVAGOWLA.slice().reverse()),
+  },
+};
+
+/**
+ * The flat-side swaras of Mayamalavagowla. A fretboard-trained ear reliably
+ * sings these sharp, so they get their own diagnosis.
+ */
+const KOMAL_PITCH_CLASSES = new Set([1, 8]);   // Ri1, Dha1
+/** ...and these are where the pull toward a major third / leading tone shows. */
+const LEADING_PITCH_CLASSES = new Set([4, 11]); // Ga3, Ni3
+
+const mod12 = (n) => ((n % 12) + 12) % 12;
+
+/** Ratio of a semitone offset to the tonic, in the given temperament. */
+function ratioFor(semitone, temperament = 'just') {
+  const octave = Math.floor(semitone / 12);
+  const pitchClass = mod12(semitone);
+  const base = temperament === 'just'
+    ? JUST_RATIOS[pitchClass]
+    : Math.pow(2, pitchClass / 12);
+  return base * Math.pow(2, octave);
+}
+
+/** Absolute frequency of a semitone offset from Sa. */
+function frequencyOf(semitone, temperament = 'just') {
+  return TONIC_HZ * ratioFor(semitone, temperament);
+}
+
+/** Signed distance in cents. Positive means `freq` is sharp of `reference`. */
+function centsBetween(freq, reference) {
+  return 1200 * Math.log(freq / reference) / Math.LN2;
+}
+
+/**
+ * Name a semitone offset. Octave displacement is marked the way Carnatic
+ * notation marks it: a dot above for taara sthayi, below for mandra.
+ */
+function describe(semitone) {
+  const pitchClass = mod12(semitone);
+  const octave = Math.floor(semitone / 12);
+  const base = SWARASTHANAS[pitchClass];
+  const dot = octave > 0 ? '̇' : octave < 0 ? '̣' : '';
+  return {
+    pitchClass,
+    octave,
+    name: base.name + dot,
+    variant: base.variant,
+    devanagari: base.devanagari + (octave > 0 ? 'ं' : ''),
+  };
+}
+
+/** Plain-text label, e.g. "Ri1". Used in prose. */
+function labelOf(semitone) {
+  const s = describe(semitone);
+  return s.name + s.variant;
+}
+
+/** The same label as HTML, with the variant as a subscript. */
+function htmlLabelOf(semitone) {
+  const s = describe(semitone);
+  return s.variant ? `${s.name}<sub>${s.variant}</sub>` : s.name;
+}
+
+/** How the target is expressed: a ratio in just intonation, cents in equal. */
+function ratioLabel(semitone, temperament = 'just') {
+  const pitchClass = mod12(semitone);
+  const octave = Math.floor(semitone / 12);
+  if (temperament !== 'just') return `${100 * pitchClass + 1200 * octave}¢ ET`;
+  if (octave === 1 && pitchClass === 0) return '2 : 1';
+  if (octave === -1) return `${RATIO_LABELS[pitchClass]} ÷ 2`;
+  return RATIO_LABELS[pitchClass];
+}
+
+/** Cents of the pitch class above Sa, in the given temperament. */
+function centsAboveSa(pitchClass, temperament = 'just') {
+  return 1200 * Math.log(ratioFor(pitchClass, temperament)) / Math.LN2;
+}
+
+/**
+ * Nearest swarasthana to a frequency, as a semitone offset from Sa.
+ *
+ * The equal-tempered guess gets us within one semitone; we then check the
+ * three candidates against the *actual* targets, because just-intonation
+ * targets can sit up to ~22c away from where equal temperament puts them.
+ */
+function nearestSwarasthana(freq, temperament = 'just') {
+  const guess = Math.round(12 * Math.log(freq / TONIC_HZ) / Math.LN2);
+  let best = guess;
+  let bestDistance = Infinity;
+  for (let s = guess - 1; s <= guess + 1; s += 1) {
+    const distance = Math.abs(centsBetween(freq, frequencyOf(s, temperament)));
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = s;
+    }
+  }
+  return best;
+}
+
+/** True when two semitone offsets name the same swara in different octaves. */
+function sameSwara(a, b) {
+  return mod12(a - b) === 0;
+}
+
+// ---- src/analysis.js ---------------------------------------------
+/**
+ * Turning a stream of cents readings into the four things that are actually
+ * wrong with a sung note.
+ *
+ * A tuner needle conflates them. They have different causes and different
+ * fixes, so they are measured separately:
+ *
+ *   centre  where the pitch sat on average       - ear, or the wrong target
+ *   wobble  how much it swung around that centre - breath, not ear
+ *   onset   where the note started               - scooping up into it
+ *   drift   how far it moved while being held    - support running out
+ */
+
+const TOLERANCE_CENTS = 15;
+const HOLD_MS = 900;
+/** How far off a reading can be and still count as an attempt at this swara. */
+const ATTEMPT_WINDOW_CENTS = 150;
+
+function mean(values) {
+  if (!values.length) return 0;
+  let total = 0;
+  for (const value of values) total += value;
+  return total / values.length;
+}
+
+/** Sample standard deviation. Zero for fewer than two readings. */
+function standardDeviation(values) {
+  if (values.length < 2) return 0;
+  const average = mean(values);
+  let sum = 0;
+  for (const value of values) sum += (value - average) ** 2;
+  return Math.sqrt(sum / (values.length - 1));
+}
+
+const EMPTY = {
+  attempted: false,
+  landed: false,
+  centre: 0,
+  wobble: 0,
+  onset: 0,
+  settle: 0,
+  drift: 0,
+};
+
+/**
+ * Reduce one attempt at a swara to its statistics.
+ *
+ * @param {{landed: boolean, now: number,
+ *          holdTrace: Array<{t:number,c:number}>,
+ *          stepTrace: Array<{t:number,c:number}>}} attempt
+ *   holdTrace is the current unbroken phrase; stepTrace is everything sung
+ *   since the swara came up, including false starts.
+ */
+function summarise({ landed, now, holdTrace, stepTrace }) {
+  let readings;
+  let approach;
+
+  if (landed) {
+    // Only the sustained part counts toward the centre.
+    readings = holdTrace.filter((p) => p.t >= now - HOLD_MS).map((p) => p.c);
+    approach = holdTrace;
+  } else {
+    // A missed swara: ignore stretches where a different swara was being sung,
+    // or the "centre" ends up averaging two unrelated notes.
+    approach = stepTrace.filter((p) => Math.abs(p.c) <= ATTEMPT_WINDOW_CENTS);
+    readings = approach.map((p) => p.c);
+    if (!approach.length) approach = stepTrace;
+  }
+
+  if (readings.length < 4) return { ...EMPTY };
+
+  const head = approach.slice(0, Math.min(3, approach.length)).map((p) => p.c);
+  const third = Math.max(1, Math.floor(readings.length / 3));
+
+  let settle = 0;
+  if (landed) {
+    const arrival = approach.find((p) => Math.abs(p.c) <= TOLERANCE_CENTS);
+    if (arrival) settle = arrival.t - approach[0].t;
+  }
+
+  return {
+    attempted: true,
+    landed,
+    centre: mean(readings),
+    wobble: standardDeviation(readings),
+    onset: mean(head),
+    settle,
+    drift: mean(readings.slice(-third)) - mean(readings.slice(0, third)),
+  };
+}
+
+// ---- src/pitch.js ------------------------------------------------
+/**
+ * Monophonic pitch detection by normalised square difference (NSDF), the
+ * function at the heart of McLeod & Wyvill's method.
+ *
+ * Plain autocorrelation biases toward the loudest partial and happily reports
+ * an octave error on a sung vowel, which has a great deal of energy above the
+ * fundamental. Normalising by the summed energy of both windows, then taking
+ * the *first* peak that clears a fraction of the global maximum rather than
+ * the maximum itself, is what keeps it on the fundamental.
+ *
+ * Cost is O(lags x window). With a 1024-sample window and lags capped at 700
+ * that is ~700k multiply-adds per analysis; running it every other animation
+ * frame keeps a laptop comfortable.
+ */
+
+const DEFAULTS = {
+  windowSize: 1024,
+  minHz: 65,        // a little under the lowest Sa anyone will sing here
+  maxHz: 1100,      // a little over the highest
+  silenceRms: 0.008,
+  minClarity: 0.42,
+  peakFraction: 0.9,
+};
+
+class PitchDetector {
+  constructor(sampleRate, options = {}) {
+    const config = { ...DEFAULTS, ...options };
+    this.sampleRate = sampleRate;
+    this.windowSize = config.windowSize;
+    this.silenceRms = config.silenceRms;
+    this.minClarity = config.minClarity;
+    this.peakFraction = config.peakFraction;
+    this.minLag = Math.max(2, Math.floor(sampleRate / config.maxHz));
+    this.maxLag = Math.floor(sampleRate / config.minHz);
+    this.nsdf = new Float32Array(this.maxLag + 2);
+    this.rms = 0;
+  }
+
+  /** Samples needed per call: one window plus the longest lag we compare at. */
+  get requiredSamples() {
+    return this.windowSize + this.maxLag + 1;
+  }
+
+  /**
+   * @param {Float32Array} samples time-domain buffer, at least requiredSamples long
+   * @returns {{frequency:number, clarity:number, rms:number}|null} null when
+   *          the input is silent or too noisy to call
+   */
+  detect(samples) {
+    const { windowSize, minLag, maxLag, nsdf } = this;
+
+    let energy = 0;
+    for (let i = 0; i < windowSize; i += 1) energy += samples[i] * samples[i];
+    const rms = Math.sqrt(energy / windowSize);
+    this.rms = rms;
+    if (rms < this.silenceRms) return null;
+
+    const usableLag = Math.min(maxLag, samples.length - windowSize - 1);
+    let peak = 0;
+    for (let lag = minLag; lag <= usableLag; lag += 1) {
+      let correlation = 0;
+      let norm = 0;
+      for (let i = 0; i < windowSize; i += 1) {
+        const a = samples[i];
+        const b = samples[i + lag];
+        correlation += a * b;
+        norm += a * a + b * b;
+      }
+      const value = norm > 0 ? (2 * correlation) / norm : 0;
+      nsdf[lag] = value;
+      if (value > peak) peak = value;
+    }
+    if (peak < this.minClarity) return null;
+
+    // First local maximum clearing peakFraction of the global peak. Taking the
+    // first rather than the largest is the octave-error guard.
+    const threshold = peak * this.peakFraction;
+    let chosen = -1;
+    for (let lag = minLag + 1; lag < usableLag; lag += 1) {
+      if (nsdf[lag] >= threshold && nsdf[lag] >= nsdf[lag - 1] && nsdf[lag] >= nsdf[lag + 1]) {
+        chosen = lag;
+        break;
+      }
+    }
+    if (chosen < 0) return null;
+
+    // Parabolic interpolation over the three points around the peak. Without
+    // this the resolution is a whole sample of lag, which at 400Hz is ~20 cents.
+    const y0 = nsdf[chosen - 1];
+    const y1 = nsdf[chosen];
+    const y2 = nsdf[chosen + 1];
+    const denominator = 2 * (2 * y1 - y0 - y2);
+    const shift = denominator !== 0 ? (y2 - y0) / denominator : 0;
+
+    return {
+      frequency: this.sampleRate / (chosen + shift),
+      clarity: y1,
+      rms,
+    };
+  }
+}
+
+// ---- src/microphone.js -------------------------------------------
+/**
+ * Microphone capture, with the awkward parts handled.
+ *
+ * Two things bite here. First, not every input accepts the processing
+ * constraints — some reject `echoCancellation` outright with an
+ * OverconstrainedError rather than ignoring it — so we ask for what we want and
+ * fall back twice rather than failing the whole session. Second, macOS will
+ * quietly hand the default input to a nearby iPhone via Continuity Camera,
+ * which is both laggy and heavily processed, so the device list has to be
+ * offered to the user rather than trusting the default.
+ */
+
+const WANTED = {
+  echoCancellation: true,   // the drone leaks back in on open speakers
+  noiseSuppression: false,  // eats the quiet part of a held note
+  autoGainControl: false,   // would fight the input meter
+};
+
+const FATAL = new Set(['NotAllowedError', 'SecurityError']);
+
+class Microphone {
+  constructor(context) {
+    this.context = context;
+    this.stream = null;
+    this.source = null;
+    this.analyser = null;
+    this.buffer = null;
+    this.deviceId = '';
+  }
+
+  get active() {
+    return Boolean(this.stream);
+  }
+
+  async open(deviceId = '') {
+    const stream = await requestStream(deviceId);
+
+    if (this.stream) this.stream.getTracks().forEach((track) => track.stop());
+    if (this.source) {
+      try { this.source.disconnect(); } catch { /* already gone */ }
+    }
+
+    this.stream = stream;
+    this.deviceId = deviceId;
+    this.source = this.context.createMediaStreamSource(stream);
+
+    // Rumble, handling noise and mains hum all live below the lowest Sa.
+    const highpass = this.context.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 60;
+
+    this.analyser = this.context.createAnalyser();
+    this.analyser.fftSize = 2048;
+    this.analyser.smoothingTimeConstant = 0;
+    this.buffer = new Float32Array(this.analyser.fftSize);
+
+    this.source.connect(highpass);
+    highpass.connect(this.analyser);
+  }
+
+  close() {
+    if (this.stream) this.stream.getTracks().forEach((track) => track.stop());
+    this.stream = null;
+    this.analyser = null;
+  }
+
+  /** Latest time-domain frame, or null when the mic is closed. */
+  read() {
+    if (!this.analyser) return null;
+    this.analyser.getFloatTimeDomainData(this.buffer);
+    return this.buffer;
+  }
+
+  /**
+   * Inputs the browser will name for us. Labels are empty until permission has
+   * been granted at least once, so this is worth calling again after open().
+   */
+  static async list() {
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      return devices
+        .filter((device) => device.kind === 'audioinput')
+        .filter((device) => device.deviceId && device.deviceId !== 'default')
+        .map((device) => ({ id: device.deviceId, label: device.label || 'Input' }));
+    } catch {
+      return [];
+    }
+  }
+}
+
+async function requestStream(deviceId) {
+  const exact = deviceId ? { deviceId: { exact: deviceId } } : null;
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: exact ? { ...WANTED, ...exact } : WANTED,
+    });
+  } catch (error) {
+    if (FATAL.has(error.name)) throw error;
+  }
+
+  try {
+    return await navigator.mediaDevices.getUserMedia({ audio: exact || true });
+  } catch (error) {
+    if (FATAL.has(error.name)) throw error;
+  }
+
+  return navigator.mediaDevices.getUserMedia({ audio: true });
+}
+
+/** What to tell the user when capture fails. */
+function explainFailure(error) {
+  switch (error && error.name) {
+    case 'NotAllowedError':
+      return 'Permission was blocked — allow microphone access for this page and press the '
+        + 'button again.';
+    case 'NotFoundError':
+      return 'No audio input was found. Connect a microphone, then press the button again.';
+    case 'NotReadableError':
+      return 'The input is busy — another app has the microphone. Close it, or pick a '
+        + 'different input from the dropdown.';
+    default:
+      return 'Microphone capture needs a secure context. Serve the page over http://localhost '
+        + 'or https rather than opening the file directly.';
+  }
+}
+
+// ---- src/tanpura.js ----------------------------------------------
+/**
+ * A four-string tanpura, synthesised rather than sampled so it never seams.
+ *
+ * Each pluck is a Karplus-Strong string rendered offline into an AudioBuffer:
+ * a short burst of filtered noise pushed through a delay line whose feedback
+ * path averages adjacent samples. The averaging is a one-zero lowpass, so
+ * partials die off faster the higher they are, which is roughly what a real
+ * string does.
+ *
+ * Two layers three cents apart stand in for jvari, the shimmer a tanpura's
+ * bridge produces. It is cheap and it is the difference between "drone" and
+ * "tanpura".
+ */
+
+
+const PLUCK_INTERVAL = 1.05;   // seconds between strings
+const SCHEDULE_AHEAD = 1.2;    // seconds of lookahead
+const TICK_MS = 260;           // how often the scheduler tops up
+const DAMPING = 0.99997;       // per-sample; ~4s to inaudible at the fundamental
+const MAX_GAIN = 0.3;
+
+function renderString(context, frequency, seconds) {
+  const { sampleRate } = context;
+  const length = Math.floor(sampleRate * seconds);
+  const mix = new Float32Array(length);
+  const layers = [
+    { frequency, gain: 1 },
+    { frequency: frequency * Math.pow(2, 3 / 1200), gain: 0.34 },
+  ];
+
+  for (const layer of layers) {
+    const period = Math.max(2, Math.round(sampleRate / layer.frequency));
+    const line = new Float32Array(length);
+
+    // Excitation: noise, gently lowpassed so the attack is a pluck and not a click.
+    let smoothed = 0;
+    let sum = 0;
+    for (let i = 0; i < period; i += 1) {
+      smoothed = smoothed * 0.55 + (Math.random() * 2 - 1) * 0.45;
+      line[i] = smoothed;
+      sum += smoothed;
+    }
+    // Remove DC, or the string starts with an audible thump.
+    const mean = sum / period;
+    for (let i = 0; i < period; i += 1) line[i] -= mean;
+
+    let previous = 0;
+    for (let i = period; i < length; i += 1) {
+      const averaged = 0.5 * (line[i - period] + line[i - period + 1]);
+      previous = previous * 0.28 + averaged * 0.72;
+      line[i] = previous * DAMPING;
+    }
+
+    for (let i = 0; i < length; i += 1) mix[i] += line[i] * layer.gain;
+  }
+
+  // 4ms in, long fade out over the tail, so consecutive plucks never click.
+  const attack = Math.floor(sampleRate * 0.004);
+  const releaseFrom = Math.floor(length * 0.72);
+  for (let i = 0; i < attack; i += 1) mix[i] *= i / attack;
+  for (let i = releaseFrom; i < length; i += 1) {
+    mix[i] *= 1 - (i - releaseFrom) / (length - releaseFrom);
+  }
+
+  const buffer = context.createBuffer(1, length, sampleRate);
+  buffer.getChannelData(0).set(mix);
+  return buffer;
+}
+
+class Tanpura {
+  /**
+   * @param {AudioContext} context
+   * @param {{temperament?: string, volume?: number}} options
+   */
+  constructor(context, options = {}) {
+    this.context = context;
+    this.temperament = options.temperament || 'just';
+    this.volume = options.volume ?? 0.45;
+    this.playing = false;
+    this.strings = null;
+    this.output = null;
+    this.timer = null;
+    this.step = 0;
+    this.nextPluck = 0;
+  }
+
+  /** Classic tuning: Pa a fifth below Sa, two Sa, then Sa an octave down. */
+  build() {
+    const fifth = this.temperament === 'just' ? 3 / 2 : Math.pow(2, 7 / 12);
+    this.strings = [
+      renderString(this.context, (TONIC_HZ * fifth) / 2, 5),
+      renderString(this.context, TONIC_HZ, 5),
+      renderString(this.context, TONIC_HZ, 5),
+      renderString(this.context, TONIC_HZ / 2, 6),
+    ];
+  }
+
+  schedule() {
+    const { context } = this;
+    while (this.nextPluck < context.currentTime + SCHEDULE_AHEAD) {
+      const source = context.createBufferSource();
+      source.buffer = this.strings[this.step % 4];
+      const gain = context.createGain();
+      // The low Sa sits back a touch so the cycle does not lurch.
+      gain.gain.value = this.step % 4 === 3 ? 0.85 : 1;
+      source.connect(gain);
+      gain.connect(this.output);
+      source.start(Math.max(this.nextPluck, context.currentTime + 0.02));
+      this.nextPluck += PLUCK_INTERVAL;
+      this.step += 1;
+    }
+  }
+
+  start() {
+    if (this.playing) return;
+    if (!this.strings) this.build();
+
+    const { context } = this;
+    this.output = context.createGain();
+    this.output.gain.value = this.volume * MAX_GAIN;
+
+    const tone = context.createBiquadFilter();
+    tone.type = 'lowpass';
+    tone.frequency.value = 4200;
+    tone.Q.value = 0.4;
+
+    this.output.connect(tone);
+    tone.connect(context.destination);
+
+    this.step = 0;
+    this.nextPluck = context.currentTime + 0.06;
+    this.schedule();
+    this.timer = setInterval(() => this.schedule(), TICK_MS);
+    this.playing = true;
+  }
+
+  stop() {
+    if (this.timer) {
+      clearInterval(this.timer);
+      this.timer = null;
+    }
+    if (this.output) {
+      const node = this.output;
+      // Ring the drone down rather than cutting it, then release the node once
+      // every scheduled pluck has certainly finished.
+      try {
+        node.gain.setTargetAtTime(0, this.context.currentTime, 0.25);
+      } catch {
+        node.gain.value = 0;
+      }
+      setTimeout(() => {
+        try { node.disconnect(); } catch { /* already gone */ }
+      }, 1400);
+      this.output = null;
+    }
+    this.playing = false;
+  }
+
+  setVolume(value) {
+    this.volume = value;
+    if (this.output) this.output.gain.value = value * MAX_GAIN;
+  }
+
+  /** Retuning means re-rendering the strings, so restart if we are mid-drone. */
+  setTemperament(temperament) {
+    if (temperament === this.temperament) return;
+    this.temperament = temperament;
+    this.strings = null;
+    if (this.playing) {
+      this.stop();
+      this.start();
+    }
+  }
+}
+
+/**
+ * A short reference tone for the target swara. Triangle plus an octave sine —
+ * enough harmonic content to pitch against, soft enough not to startle.
+ */
+function soundSwara(context, frequency) {
+  const envelope = context.createGain();
+  envelope.gain.value = 0;
+
+  const fundamental = context.createOscillator();
+  fundamental.type = 'triangle';
+  fundamental.frequency.value = frequency;
+
+  const octave = context.createOscillator();
+  octave.type = 'sine';
+  octave.frequency.value = frequency * 2;
+
+  const octaveGain = context.createGain();
+  octaveGain.gain.value = 0.22;
+
+  fundamental.connect(envelope);
+  octave.connect(octaveGain);
+  octaveGain.connect(envelope);
+  envelope.connect(context.destination);
+
+  const now = context.currentTime;
+  envelope.gain.setValueAtTime(0, now);
+  envelope.gain.linearRampToValueAtTime(0.2, now + 0.04);
+  envelope.gain.setTargetAtTime(0.0001, now + 0.9, 0.28);
+
+  fundamental.start(now);
+  octave.start(now);
+  fundamental.stop(now + 2.2);
+  octave.stop(now + 2.2);
+}
+
+// ---- src/drill.js ------------------------------------------------
+/**
+ * The drill: walk a cut one swara at a time, deciding when a swara has been
+ * landed, when it has been missed, and what the attempt looked like.
+ *
+ * Deliberately free of audio and DOM. The UI feeds it a cents reading per
+ * analysis frame and reacts to what comes back, which means the whole state
+ * machine can be driven from a test with a made-up sequence of readings.
+ */
+
+
+
+/** How long a single swara may resist before the drill moves on without it. */
+const GIVE_UP_MS = 9000;
+/** Silence longer than this ends the current phrase. */
+const PHRASE_BREAK_MS = 300;
+const MAX_TRACE = 900;
+
+class Drill {
+  constructor(cutId) {
+    this.cut = CUTS[cutId];
+    this.steps = this.cut.steps;
+    this.reset();
+  }
+
+  reset() {
+    this.index = 0;
+    this.results = [];
+    this.holdMs = 0;
+    this.quietMs = 0;
+    this.stepMs = 0;
+    this.holdTrace = [];   // the current unbroken phrase
+    this.stepTrace = [];   // everything sung since this swara came up
+    this.finished = false;
+  }
+
+  get target() {
+    return this.steps[Math.min(this.index, this.steps.length - 1)];
+  }
+
+  get landedCount() {
+    return this.results.filter((stats) => stats.landed).length;
+  }
+
+  get attempts() {
+    return this.results.filter((stats) => stats.attempted);
+  }
+
+  /** 0..1 — how much of the required hold has been accumulated. */
+  get holdProgress() {
+    return Math.min(1, this.holdMs / HOLD_MS);
+  }
+
+  /**
+   * One analysis frame in which a pitch was heard.
+   *
+   * @param {number} cents signed distance from the current target
+   * @param {number} dt milliseconds since the previous frame
+   * @param {number} now monotonic timestamp for the trace
+   * @returns {{advanced: boolean, landed: boolean, swara: number}|null}
+   */
+  feedPitch(cents, dt, now) {
+    if (this.finished) return null;
+    this.stepMs += dt;
+
+    this.holdTrace.push({ t: now, c: cents });
+    if (this.holdTrace.length > MAX_TRACE) this.holdTrace.shift();
+    this.stepTrace.push({ t: now, c: cents });
+    if (this.stepTrace.length > MAX_TRACE) this.stepTrace.shift();
+
+    if (Math.abs(cents) <= TOLERANCE_CENTS) {
+      this.quietMs = 0;
+      this.holdMs += dt;
+      if (this.holdMs >= HOLD_MS) return this.advance(true, now);
+      return null;
+    }
+
+    this.quietMs += dt;
+    if (this.quietMs > PHRASE_BREAK_MS) {
+      this.holdMs = 0;
+    }
+    if (this.stepMs > GIVE_UP_MS) return this.advance(false, now);
+    return null;
+  }
+
+  /**
+   * One analysis frame in which nothing was heard.
+   *
+   * @returns {{advanced: boolean, landed: boolean, swara: number}|null}
+   */
+  feedSilence(dt, now) {
+    if (this.finished) return null;
+    this.stepMs += dt;
+    this.quietMs += dt;
+
+    if (this.quietMs > PHRASE_BREAK_MS) {
+      this.holdMs = 0;
+      this.holdTrace = [];
+    }
+    if (this.stepMs > GIVE_UP_MS && this.stepTrace.length >= 4) {
+      return this.advance(false, now);
+    }
+    return null;
+  }
+
+  /** Give up on the current swara by hand. */
+  skip(now) {
+    if (this.finished) return null;
+    return this.advance(false, now);
+  }
+
+  advance(landed, now) {
+    const swara = this.target;
+    this.results.push(summarise({
+      landed,
+      now,
+      holdTrace: this.holdTrace,
+      stepTrace: this.stepTrace,
+    }));
+
+    this.index += 1;
+    this.holdMs = 0;
+    this.quietMs = 0;
+    this.stepMs = 0;
+    this.holdTrace = [];
+    this.stepTrace = [];
+    if (this.index >= this.steps.length) this.finished = true;
+
+    return { advanced: true, landed, swara };
+  }
+}
+
+// ---- src/coach.js ------------------------------------------------
+/**
+ * Everything the tool says out loud.
+ *
+ * Kept apart from the DOM and from the measurement code so the wording can be
+ * tested directly: feed it a set of statistics, assert on what it says.
+ */
+
+
+
+const HOLD_SECONDS = (HOLD_MS / 1000).toFixed(1);
+
+/** How far off, in words. */
+function howFar(cents) {
+  const distance = Math.abs(cents);
+  if (distance <= TOLERANCE_CENTS) return null;
+  if (distance < 30) return cents > 0 ? 'a shade sharp' : 'a shade flat';
+  if (distance < 60) return cents > 0 ? 'sharp' : 'flat';
+  if (distance < 110) return cents > 0 ? 'well sharp' : 'well flat';
+  return cents > 0 ? 'far above' : 'far below';
+}
+
+const signed = (cents) => (cents >= 0 ? '+' : '−') + Math.abs(cents).toFixed(0);
+
+/**
+ * The line under the needle while someone is singing.
+ *
+ * Order matters: being on the wrong swara entirely is a different problem from
+ * being twenty cents sharp, and saying "ease down a hair" to someone singing a
+ * fourth too high is worse than saying nothing.
+ *
+ * @returns {{headline: string, detail: string, tone: 'idle'|'near'|'far'|'good'}}
+ */
+function liveAdvice({ cents, target, singing, wobble }) {
+  const distance = Math.abs(cents);
+
+  if (distance > 60 && !sameSwara(singing, target)) {
+    const gap = Math.abs(singing - target) % 12;
+    const side = singing > target ? 'above' : 'below';
+    return {
+      headline: `That is ${labelOf(singing)}, not ${labelOf(target)}`,
+      detail: `You are a ${INTERVAL_NAMES[gap] || 'wide interval'} ${side} the target. `
+        + `Come ${singing > target ? 'down' : 'up'} to ${labelOf(target)} — `
+        + 'press Hear this swara if you need it.',
+      tone: 'far',
+    };
+  }
+
+  if (distance > 600 && sameSwara(singing, target)) {
+    return {
+      headline: `${labelOf(target)} is right, the octave is not`,
+      detail: `You are an octave ${cents > 0 ? 'above' : 'below'} the target. `
+        + `Sing it ${cents > 0 ? 'lower' : 'higher'} — the reference tone will place it.`,
+      tone: 'far',
+    };
+  }
+
+  const verdict = howFar(cents);
+  if (!verdict) {
+    if (wobble > 14) {
+      return {
+        headline: 'In tune, but wobbling',
+        detail: `The pitch is swinging about ±${wobble.toFixed(0)}¢. `
+          + 'That is breath, not ear — fuller breath, even airflow, relaxed jaw.',
+        tone: 'near',
+      };
+    }
+    return {
+      headline: 'Hold it there',
+      detail: 'Steady inside the band. Keep the vowel open and do not push.',
+      tone: 'good',
+    };
+  }
+
+  const move = cents > 0 ? 'Ease down' : 'Lift up';
+  const amount = distance < 30 ? 'just a hair' : distance < 60 ? 'a little' : 'clearly';
+  return {
+    headline: `${labelOf(target)} is ${verdict}`,
+    detail: `${move} ${amount} — you are ${signed(cents)}¢ off the sruti.`,
+    tone: distance < 30 ? 'near' : 'far',
+  };
+}
+
+/**
+ * The per-swara verdict in the report: a handful of tags, then the one or two
+ * sentences most worth reading.
+ *
+ * @returns {{tags: Array<{text:string, bad:boolean}>, note: string}}
+ */
+function diagnose(stats, semitone) {
+  if (!stats.attempted) {
+    return {
+      tags: [{ text: 'not sung', bad: true }],
+      note: '<b>Nothing came in for this swara.</b> Either it was skipped or the mic heard '
+        + 'silence — sound it with Hear this swara and try the cut again.',
+    };
+  }
+
+  const pitchClass = ((semitone % 12) + 12) % 12;
+  const tags = [];
+  const notes = [];
+  const centre = stats.centre;
+  const scooped = stats.onset < -35 && stats.onset > -200;
+  const droppedIn = stats.onset > 35 && stats.onset < 200;
+
+  if (!stats.landed) tags.push({ text: 'never landed', bad: true });
+  if (Math.abs(centre) <= 6) tags.push({ text: 'centred', bad: false });
+  else tags.push({ text: centre > 6 ? 'sat sharp' : 'sat flat', bad: true });
+
+  if (stats.wobble > 14) tags.push({ text: 'unsteady', bad: true });
+  else if (stats.wobble < 7) tags.push({ text: 'steady', bad: false });
+
+  if (scooped) tags.push({ text: 'scooped up', bad: true });
+  else if (droppedIn) tags.push({ text: 'dropped in', bad: true });
+
+  if (stats.drift < -10) tags.push({ text: 'sagged', bad: true });
+  else if (stats.drift > 10) tags.push({ text: 'crept up', bad: true });
+
+  if (stats.landed && stats.settle > 1400) tags.push({ text: 'slow to find', bad: true });
+
+  // The headline problem, in priority order. Only one of these fires.
+  if (!stats.landed && Math.abs(centre) <= TOLERANCE_CENTS) {
+    notes.push(`<b>Right pitch, never held.</b> Your centre was ${signed(centre)}¢ — `
+      + `fine — but it kept sliding out of the band before ${HOLD_SECONDS}s were up. `
+      + 'This is sustain, not intonation: one swara, one full breath, needle still.');
+  } else if (!stats.landed) {
+    notes.push(`<b>You never got inside ±${TOLERANCE_CENTS}¢ here.</b> You sat around `
+      + `${signed(centre)}¢ for the whole attempt — a `
+      + `${Math.abs(centre) > 45 ? 'wide' : 'persistent'} miss on ${labelOf(semitone)}, `
+      + 'not a slip. Sound it, hum it back, then sing it.');
+  } else if (centre > 10 && KOMAL_PITCH_CLASSES.has(pitchClass)) {
+    notes.push(`<b>${labelOf(semitone)} is lower than your ear expects.</b> At `
+      + `${RATIO_LABELS[pitchClass]} it sits only ${centsAboveSa(pitchClass).toFixed(0)}¢ above Sa `
+      + '— much closer to Sa than a piano’s black key. Lean it down until it stops '
+      + 'beating against the drone.');
+  } else if (centre > 10 && LEADING_PITCH_CLASSES.has(pitchClass)) {
+    const shortfall = (100 * pitchClass - centsAboveSa(pitchClass)).toFixed(0);
+    notes.push(`<b>Guitar ear.</b> ${labelOf(semitone)} at ${RATIO_LABELS[pitchClass]} is about `
+      + `${shortfall}¢ below where a fret puts it. Let it settle lower than feels right.`);
+  } else if (centre < -10 && pitchClass === 0 && semitone > 0) {
+    notes.push('<b>The upper Sa sagged.</b> The top of the octave needs more air, not more '
+      + 'push — open the throat and let the breath do it.');
+  } else if (Math.abs(centre) > 10) {
+    notes.push(`<b>Consistently ${centre > 0 ? 'sharp' : 'flat'} by ${Math.abs(centre).toFixed(0)}¢.</b> `
+      + `Sound ${labelOf(semitone)} with Hear this swara, then match it before you sing the phrase again.`);
+  }
+
+  if (scooped) {
+    notes.push(`You <b>scooped up</b> into it from ${Math.abs(stats.onset).toFixed(0)}¢ below. `
+      + 'Hear the swara in your head first and land on it — a slide up is a habit that gets '
+      + 'expensive in fast passages.');
+  } else if (droppedIn) {
+    notes.push(`You <b>came down onto it</b> from ${stats.onset.toFixed(0)}¢ above. `
+      + 'Aim for the pitch, not past it.');
+  }
+  if (stats.drift < -10) {
+    notes.push(`It <b>fell ${Math.abs(stats.drift).toFixed(0)}¢ while you held it</b> — breath `
+      + 'support running out. Breathe lower and do not sing on the last of the air.');
+  }
+  if (stats.wobble > 14) {
+    notes.push(`Wobble of ±${stats.wobble.toFixed(0)}¢ across the hold. Steady airflow, relaxed jaw.`);
+  }
+  if (stats.landed && stats.settle > 1400) {
+    notes.push(`Took ${(stats.settle / 1000).toFixed(1)}s to find it. Pitch it mentally against `
+      + 'the tanpura’s Sa before opening your mouth.');
+  }
+
+  if (!notes.length) notes.push('Clean — landed and held it.');
+  return { tags, note: notes.slice(0, 2).join(' ') };
+}
+
+/**
+ * Habits visible across a whole cut but invisible note by note. These are the
+ * findings worth acting on; the per-swara table is the supporting detail.
+ *
+ * @returns {Array<{headline: string, detail: string, good: boolean}>}
+ */
+function findPatterns(results, steps) {
+  const findings = [];
+  const half = steps.length / 2;
+  const ascending = [];
+  const descending = [];
+  const wobbles = [];
+  let scoops = 0;
+  let sags = 0;
+  let missed = 0;
+  let pulledSharp = 0;
+  let pullable = 0;
+
+  results.forEach((stats, index) => {
+    if (!stats.attempted) return;
+    if (!stats.landed) missed += 1;
+    (index < half ? ascending : descending).push(stats.centre);
+    wobbles.push(stats.wobble);
+    if (stats.onset < -35 && stats.onset > -200) scoops += 1;
+    if (stats.drift < -10) sags += 1;
+
+    const pitchClass = ((steps[index] % 12) + 12) % 12;
+    if (KOMAL_PITCH_CLASSES.has(pitchClass) || LEADING_PITCH_CLASSES.has(pitchClass)) {
+      pullable += 1;
+      if (stats.centre > 8) pulledSharp += 1;
+    }
+  });
+
+  const attempted = results.filter((stats) => stats.attempted);
+  const overall = mean(attempted.map((stats) => Math.abs(stats.centre)));
+
+  if (missed >= Math.max(2, Math.ceil(attempted.length * 0.4))) {
+    findings.push({
+      headline: 'Most swaras never came inside the band.',
+      detail: `${missed} of ${attempted.length} stayed outside ±${TOLERANCE_CENTS}¢ for the whole `
+        + 'attempt. Before drilling the cut, spend a few minutes on Sa alone with the tanpura up '
+        + '— one long akaara, needle still. Interval accuracy is built on a reliable Sa, not '
+        + 'the other way round.',
+      good: false,
+    });
+  }
+
+  if (pullable >= 2 && pulledSharp >= Math.ceil(pullable * 0.6)) {
+    findings.push({
+      headline: 'Your ear is pulling toward equal temperament.',
+      detail: `You sang ${pulledSharp} of ${pullable} of the just-intonation swaras `
+        + '(Ri₁, Ga₃, Dha₁, Ni₃) sharp. Those four are exactly where a '
+        + 'guitar-trained ear goes wrong — they all sit lower against a drone than they do on '
+        + 'a fretboard. Practise them slowly with the tanpura up and stop when the beating '
+        + 'disappears, not when it sounds familiar.',
+      good: false,
+    });
+  }
+
+  if (ascending.length && descending.length && mean(ascending) > 8 && mean(descending) < -8) {
+    findings.push({
+      headline: 'You overshoot going up and undershoot coming down.',
+      detail: `Arohana averaged ${mean(ascending).toFixed(0)}¢ sharp, avarohana `
+        + `${mean(descending).toFixed(0)}¢ flat. Classic momentum error — the voice keeps `
+        + 'travelling past the note. Slow the varisai down and put a real stop on each swara.',
+      good: false,
+    });
+  }
+
+  if (scoops >= Math.max(2, Math.ceil(attempted.length * 0.4))) {
+    findings.push({
+      headline: 'You scoop into most notes.',
+      detail: `${scoops} of ${attempted.length} swaras started more than a third of a semitone below `
+        + 'and slid up. Use Hear this swara, sing it in your head, then start on it. This is the '
+        + 'single habit that most limits speed later.',
+      good: false,
+    });
+  }
+
+  if (mean(wobbles) > 14) {
+    findings.push({
+      headline: 'Pitch is unsteady rather than wrong.',
+      detail: `Average wobble was ±${mean(wobbles).toFixed(0)}¢, but your centres were close. `
+        + 'That is breath management, not ear training. Long akaara on Sa — one swara, one full '
+        + 'breath, needle still — will fix it faster than more varisai.',
+      good: false,
+    });
+  }
+
+  if (sags >= Math.max(2, Math.ceil(attempted.length * 0.35))) {
+    findings.push({
+      headline: 'Notes fall away as you hold them.',
+      detail: `${sags} swaras dropped more than 10¢ over the hold. Breathe from lower down and `
+        + 'aim to finish each note with air to spare.',
+      good: false,
+    });
+  }
+
+  if (!findings.length && attempted.length && overall <= 8) {
+    findings.push({
+      headline: 'Solidly centred throughout.',
+      detail: `Average error ${overall.toFixed(1)}¢ — inside what most listeners can hear. `
+        + 'Tighten it by singing the same cut with the drone louder, or move on to the second varisai.',
+      good: true,
+    });
+  }
+
+  if (!findings.length) {
+    findings.push({
+      headline: 'No single habit stands out.',
+      detail: attempted.length
+        ? `Average error was ${overall.toFixed(1)}¢ with no consistent direction. Work swara by `
+          + 'swara from the table below.'
+        : 'Nothing was heard during this run — check the input meter and the microphone selection.',
+      good: false,
+    });
+  }
+
+  return findings;
+}
+
+// ---- src/ui.js ---------------------------------------------------
+/**
+ * DOM wiring and the animation loop. Everything stateful about the page lives
+ * here; the modules it calls into are all pure or self-contained.
+ */
+
+
+
+
+
+
+
+
+const $ = (id) => document.getElementById(id);
+
+/** Frames between pitch analyses. Every other frame is plenty and halves cost. */
+const ANALYSIS_STRIDE = 2;
+/** Keep a coaching message on screen this long before the live loop resumes. */
+const MESSAGE_HOLD_MS = 1800;
+/** Readings kept for the live wobble figure — about a third of a second. */
+const WOBBLE_WINDOW = 18;
+/** Beyond this the cents figure is easier to read as semitones. */
+const SEMITONE_READOUT_CENTS = 250;
+
+const formatCents = (cents) => (cents >= 0 ? '+' : '−') + Math.abs(cents).toFixed(0);
+
+function start() {
+  const el = {
+    modeTuner: $('m-tuner'),
+    modeSapasa: $('m-sapasa'),
+    modeSarali: $('m-sarali'),
+    micButton: $('mic-btn'),
+    micDot: $('mic-dot'),
+    micLabel: $('mic-label'),
+    micSelect: $('mic-select'),
+    tanpuraButton: $('tanpura-btn'),
+    volume: $('vol'),
+    warning: $('warn'),
+    hertz: $('hz-out'),
+    octave: $('oct-out'),
+    cents: $('cents-out'),
+    direction: $('dir-out'),
+    swara: $('swara'),
+    glyph: $('glyph'),
+    devanagari: $('deva'),
+    ratio: $('ratio'),
+    ribbon: $('ribbon'),
+    ticks: $('ticks'),
+    trail: $('trail'),
+    needle: $('needle'),
+    coach: $('coach'),
+    coachLine: $('coach-line'),
+    coachSub: $('coach-sub'),
+    holdFill: $('hold-fill'),
+    levelFill: $('level-fill'),
+    hearButton: $('hear-btn'),
+    skipButton: $('skip-btn'),
+    cutTitle: $('cut-title'),
+    cutMeta: $('cut-meta'),
+    ladder: $('ladder'),
+    statLanded: $('st-hit'),
+    statAverage: $('st-avg'),
+    statWobble: $('st-steady'),
+    statRun: $('st-run'),
+    report: $('report'),
+    patterns: $('patterns'),
+    reportTable: $('rc'),
+    justButton: $('t-just'),
+    equalButton: $('t-equal'),
+    resetButton: $('reset-btn'),
+  };
+
+  const state = {
+    mode: 'tuner',
+    temperament: 'just',
+    drill: null,
+    audio: null,
+    mic: null,
+    detector: null,
+    tanpura: null,
+    smoothedHz: -1,
+    recent: [],
+    lastFrame: 0,
+    frame: 0,
+    messageUntil: 0,
+  };
+
+  drawTicks(el.ticks);
+
+  /* ---------------------------------------------------------------- audio */
+
+  function audioContext() {
+    if (!state.audio) {
+      const Ctor = window.AudioContext || window.webkitAudioContext;
+      state.audio = new Ctor();
+      state.tanpura = new Tanpura(state.audio, { temperament: state.temperament });
+    }
+    if (state.audio.state === 'suspended') state.audio.resume();
+    return state.audio;
+  }
+
+  /* ----------------------------------------------------------------- copy */
+
+  function say(headline, detail, tone) {
+    if (el.coachLine.textContent !== headline) el.coachLine.textContent = headline;
+    if (el.coachSub.textContent !== detail) el.coachSub.textContent = detail;
+    if (el.coach.dataset.tone !== tone) el.coach.dataset.tone = tone;
+  }
+
+  function flash(headline, detail, tone, now) {
+    say(headline, detail, tone);
+    state.messageUntil = now + MESSAGE_HOLD_MS;
+  }
+
+  function promptForTarget() {
+    if (state.drill && !state.drill.finished) {
+      say(
+        `Sing ${labelOf(state.drill.target)}`,
+        `Hold it inside the green band for ${(HOLD_MS / 1000).toFixed(1)}s and the drill moves on.`,
+        'idle',
+      );
+    } else if (!state.drill) {
+      say(
+        state.mic && state.mic.active ? 'Sing any swara' : 'Turn on the mic, then sing Sa',
+        state.mic && state.mic.active
+          ? 'The tuner names the nearest swarasthana and tells you which way to move.'
+          : 'Start the tanpura first so you have something to tune against.',
+        'idle',
+      );
+    }
+  }
+
+  /* --------------------------------------------------------------- render */
+
+  function renderLadder() {
+    const steps = state.drill ? state.drill.steps : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    const results = state.drill ? state.drill.results : [];
+    el.ladder.innerHTML = steps.map((semitone, index) => {
+      const stats = results[index];
+      let position = 'idle';
+      if (state.drill) {
+        if (index < state.drill.index) position = 'done';
+        else if (index === state.drill.index && !state.drill.finished) position = 'current';
+      }
+      const missed = stats && (!stats.landed || Math.abs(stats.centre) > 10);
+      const arrow = state.drill ? (index < steps.length / 2 ? '↑' : '↓') : '';
+      const figure = stats
+        ? (stats.attempted ? `${formatCents(stats.centre)}¢` : '—')
+        : frequencyOf(semitone, state.temperament).toFixed(1);
+
+      return `<div class="step${position === 'done' && missed ? ' wide' : ''}" data-state="${position}">`
+        + (arrow ? `<div class="arc">${arrow}</div>` : '')
+        + `<div class="s-name">${htmlLabelOf(semitone)}</div>`
+        + `<div class="s-hz">${figure}</div>`
+        + '</div>';
+    }).join('');
+
+    const heading = state.drill
+      ? [state.drill.cut.title, state.drill.cut.blurb]
+      : ['The twelve swarasthanas', 'Free tuner · nearest swara in A♯ sruti'];
+    el.cutTitle.textContent = heading[0];
+    el.cutMeta.textContent = `${heading[1]} · ${state.temperament === 'just' ? 'just intonation' : 'equal temperament'}`;
+
+    const landed = state.drill ? state.drill.landedCount : 0;
+    const total = state.drill ? state.drill.steps.length : 0;
+    el.statLanded.innerHTML = `${landed}<span style="font-size:.6em;color:var(--text-3)">/${total}</span>`;
+  }
+
+  function renderTarget() {
+    if (!state.drill) return;
+    const semitone = state.drill.target;
+    el.glyph.innerHTML = htmlLabelOf(semitone);
+    el.devanagari.textContent = describe(semitone).devanagari;
+    el.ratio.textContent = `${ratioLabel(semitone, state.temperament)}  ·  `
+      + `${frequencyOf(semitone, state.temperament).toFixed(2)} Hz`;
+  }
+
+  function renderStats() {
+    const attempts = state.drill ? state.drill.attempts : [];
+    el.statAverage.textContent = attempts.length
+      ? mean(attempts.map((stats) => Math.abs(stats.centre))).toFixed(1)
+      : '—';
+    el.statWobble.textContent = attempts.length
+      ? `±${mean(attempts.map((stats) => stats.wobble)).toFixed(0)}`
+      : '—';
+  }
+
+  function renderNeedle(cents, live) {
+    const clamped = Math.max(-50, Math.min(50, cents));
+    el.needle.style.left = `${50 + clamped}%`;
+    if (!live) {
+      el.needle.className = 'needle';
+      el.trail.style.width = '0';
+      return;
+    }
+    const distance = Math.abs(cents);
+    el.needle.className = `needle ${distance <= TOLERANCE_CENTS ? 'intune' : cents < 0 ? 'flat' : 'sharp'}`;
+
+    // A faint bar from where the phrase started to where it is now, which makes
+    // a scoop visible as it happens rather than only in the report.
+    const trace = state.drill ? state.drill.holdTrace : [];
+    if (trace.length > 1) {
+      const from = Math.max(-50, Math.min(50, trace[0].c));
+      el.trail.style.left = `${50 + Math.min(from, clamped)}%`;
+      el.trail.style.width = `${Math.abs(clamped - from)}%`;
+    }
+  }
+
+  function renderReport() {
+    const { drill } = state;
+    const attempts = drill.attempts;
+    const average = mean(attempts.map((stats) => Math.abs(stats.centre)));
+
+    el.statRun.textContent = 'complete';
+    el.skipButton.hidden = true;
+    el.holdFill.style.width = '100%';
+    renderLadder();
+    renderStats();
+
+    say(
+      `Cut complete — ${drill.landedCount} of ${drill.results.length} landed`,
+      attempts.length
+        ? `Average error ${average.toFixed(1)}¢. The notes below say what to fix first.`
+        : 'Nothing was heard — check the input meter and the microphone selection.',
+      drill.landedCount === drill.results.length && average <= 10 ? 'good' : 'near',
+    );
+
+    el.patterns.innerHTML = findPatterns(drill.results, drill.steps)
+      .map((finding) => `<div class="pattern${finding.good ? ' good' : ''}" style="margin-bottom:8px">`
+        + `<b>${finding.headline}</b> ${finding.detail}</div>`)
+      .join('');
+
+    const rows = ['<div class="rc-row head"><span>Swara</span><span>Landed</span><span>What to fix</span></div>'];
+    drill.results.forEach((stats, index) => {
+      const semitone = drill.steps[index];
+      const { tags, note } = diagnose(stats, semitone);
+      const tint = !stats.attempted ? '' : Math.abs(stats.centre) <= 6 ? 'ok' : stats.centre > 0 ? 'sharp' : 'flat';
+      const arrow = index < drill.steps.length / 2 ? '↑' : '↓';
+      rows.push(
+        '<div class="rc-row">'
+        + `<div class="rc-sw">${htmlLabelOf(semitone)} <span style="font-family:var(--fm);font-size:9px;color:var(--text-3)">${arrow}</span></div>`
+        + `<div class="rc-c ${tint}">${stats.attempted ? `${formatCents(stats.centre)}¢` : '—'}</div>`
+        + `<div><div class="chips">${tags.map((tag) => `<span class="chip ${tag.bad ? 'bad' : 'ok'}">${tag.text}</span>`).join('')}</div>`
+        + `<div class="rc-note">${note}</div></div>`
+        + '</div>',
+      );
+    });
+    el.reportTable.innerHTML = rows.join('');
+    el.report.hidden = false;
+  }
+
+  /* ----------------------------------------------------------------- modes */
+
+  function setMode(mode) {
+    state.mode = mode;
+    state.drill = CUTS[mode] ? new Drill(mode) : null;
+    state.recent = [];
+    state.messageUntil = 0;
+
+    el.modeTuner.setAttribute('aria-pressed', String(mode === 'tuner'));
+    el.modeSapasa.setAttribute('aria-pressed', String(mode === 'sapasa'));
+    el.modeSarali.setAttribute('aria-pressed', String(mode === 'sarali'));
+
+    el.report.hidden = true;
+    el.skipButton.hidden = !state.drill;
+    el.holdFill.style.width = '0%';
+    el.trail.style.width = '0';
+    el.statRun.textContent = state.drill ? 'in progress' : '—';
+
+    renderLadder();
+    renderStats();
+    if (state.drill) {
+      renderTarget();
+    } else {
+      el.glyph.textContent = 'Sa';
+      el.devanagari.textContent = describe(0).devanagari;
+      el.ratio.textContent = `1 : 1  ·  ${TONIC_HZ.toFixed(2)} Hz`;
+    }
+    promptForTarget();
+  }
+
+  function setTemperament(temperament) {
+    state.temperament = temperament;
+    el.justButton.setAttribute('aria-pressed', String(temperament === 'just'));
+    el.equalButton.setAttribute('aria-pressed', String(temperament === 'equal'));
+    if (state.tanpura) state.tanpura.setTemperament(temperament);
+    renderLadder();
+    renderTarget();
+  }
+
+  /* ------------------------------------------------------------- controls */
+
+  el.modeTuner.addEventListener('click', () => setMode('tuner'));
+  el.modeSapasa.addEventListener('click', () => setMode('sapasa'));
+  el.modeSarali.addEventListener('click', () => setMode('sarali'));
+  el.justButton.addEventListener('click', () => setTemperament('just'));
+  el.equalButton.addEventListener('click', () => setTemperament('equal'));
+  el.resetButton.addEventListener('click', () => setMode(state.mode));
+
+  el.tanpuraButton.addEventListener('click', () => {
+    audioContext();
+    const { tanpura } = state;
+    if (tanpura.playing) tanpura.stop();
+    else tanpura.start();
+    el.tanpuraButton.setAttribute('aria-pressed', String(tanpura.playing));
+    el.tanpuraButton.textContent = tanpura.playing ? 'Tanpura on' : 'Tanpura';
+  });
+
+  el.volume.addEventListener('input', (event) => {
+    if (state.tanpura) state.tanpura.setVolume(event.target.value / 100);
+  });
+
+  el.hearButton.addEventListener('click', () => {
+    const context = audioContext();
+    const semitone = state.drill ? state.drill.target : 0;
+    soundSwara(context, frequencyOf(semitone, state.temperament));
+  });
+
+  el.skipButton.addEventListener('click', () => {
+    if (!state.drill || state.drill.finished) return;
+    const skipped = labelOf(state.drill.target);
+    state.drill.skip(performance.now());
+    afterAdvance();
+    if (!state.drill.finished) {
+      flash(
+        `Skipped ${skipped}`,
+        'It is logged as a miss so the report still covers it. Come back to it with the reference tone.',
+        'near',
+        performance.now(),
+      );
+    }
+  });
+
+  el.micSelect.addEventListener('change', async (event) => {
+    if (!state.mic || !state.mic.active) return;
+    try {
+      await state.mic.open(event.target.value);
+    } catch (error) {
+      showWarning(error);
+    }
+  });
+
+  el.micButton.addEventListener('click', toggleMicrophone);
+
+  function showWarning(error) {
+    el.warning.classList.add('show');
+    el.warning.innerHTML = `<b>The microphone is not available.</b> ${explainFailure(error)} `
+      + 'The tanpura and the reference tones work either way.'
+      + (error && error.name ? ` <span style="opacity:.7">(${error.name})</span>` : '');
+  }
+
+  async function populateDevices() {
+    const devices = await Microphone.list();
+    const chosen = el.micSelect.value;
+    el.micSelect.innerHTML = '<option value="">Default microphone</option>'
+      + devices.map((device) => `<option value="${device.id}">${device.label}</option>`).join('');
+    if (chosen) el.micSelect.value = chosen;
+  }
+
+  async function toggleMicrophone() {
+    if (state.mic && state.mic.active) {
+      state.mic.close();
+      el.micDot.className = 'dot';
+      el.micLabel.textContent = 'Turn on mic';
+      el.micButton.className = 'btn primary';
+      el.ribbon.classList.add('idle');
+      say('Mic off', 'Turn it back on when you are ready to sing.', 'idle');
+      return;
+    }
+
+    try {
+      const context = audioContext();
+      if (!state.mic) state.mic = new Microphone(context);
+      await state.mic.open(el.micSelect.value);
+      await populateDevices();
+      state.detector = new PitchDetector(context.sampleRate);
+
+      el.warning.classList.remove('show');
+      el.micDot.className = 'dot live';
+      el.micLabel.textContent = 'Mic listening';
+      el.micButton.className = 'btn';
+      el.ribbon.classList.remove('idle');
+      promptForTarget();
+    } catch (error) {
+      showWarning(error);
+    }
+  }
+
+  /* ------------------------------------------------------------------ loop */
+
+  function afterAdvance() {
+    renderStats();
+    if (state.drill.finished) renderReport();
+    else {
+      renderLadder();
+      renderTarget();
+      el.holdFill.style.width = '0%';
+      el.trail.style.width = '0';
+    }
+  }
+
+  function clearReadout() {
+    el.hertz.textContent = '—  Hz';
+    el.cents.textContent = '—';
+    el.direction.textContent = 'cents';
+    el.octave.textContent = 'quiet';
+    el.swara.classList.remove('intune');
+    renderNeedle(0, false);
+  }
+
+  function loop(now) {
+    requestAnimationFrame(loop);
+    const dt = state.lastFrame ? now - state.lastFrame : 16;
+    state.lastFrame = now;
+    state.frame += 1;
+
+    if (!state.mic || !state.mic.active || !state.detector) return;
+    if (state.frame % ANALYSIS_STRIDE) return;
+    const elapsed = dt * ANALYSIS_STRIDE;
+
+    const samples = state.mic.read();
+    const reading = state.detector.detect(samples);
+    el.levelFill.style.width = `${Math.min(100, state.detector.rms * 900)}%`;
+
+    if (!reading) {
+      clearReadout();
+      const outcome = state.drill ? state.drill.feedSilence(elapsed, now) : null;
+      if (outcome) {
+        const missed = labelOf(outcome.swara);
+        afterAdvance();
+        if (!state.drill.finished) {
+          flash(`Moving on from ${missed}`,
+            'Logged as a miss — the report at the end will say what went wrong there.',
+            'near', now);
+        }
+        return;
+      }
+      if (now > state.messageUntil && !(state.drill && state.drill.finished)) {
+        if (state.detector.rms < 0.004) {
+          say('Nothing coming in',
+            'The input meter is empty. If macOS handed the mic to another device, pick the right '
+            + 'one from the dropdown.', 'idle');
+        } else {
+          promptForTarget();
+        }
+      }
+      return;
+    }
+
+    // Light smoothing. Vowels are not perfectly periodic and the raw estimate
+    // jitters a cent or two frame to frame; this settles the needle without
+    // hiding an actual wobble.
+    state.smoothedHz = state.smoothedHz > 0
+      ? state.smoothedHz * 0.45 + reading.frequency * 0.55
+      : reading.frequency;
+    const hz = state.smoothedHz;
+    el.hertz.textContent = `${hz.toFixed(1)} Hz`;
+
+    const singing = nearestSwarasthana(hz, state.temperament);
+    const drilling = Boolean(state.drill) && !state.drill.finished;
+    const target = drilling ? state.drill.target : singing;
+    const cents = centsBetween(hz, frequencyOf(target, state.temperament));
+    const distance = Math.abs(cents);
+
+    if (!drilling) {
+      el.glyph.innerHTML = htmlLabelOf(target);
+      el.devanagari.textContent = describe(target).devanagari;
+      el.ratio.textContent = `${ratioLabel(target, state.temperament)}  ·  `
+        + `${frequencyOf(target, state.temperament).toFixed(2)} Hz`;
+    }
+
+    state.recent.push(cents);
+    if (state.recent.length > WOBBLE_WINDOW) state.recent.shift();
+    const wobble = standardDeviation(state.recent);
+
+    if (distance > SEMITONE_READOUT_CENTS) {
+      el.cents.textContent = `${cents >= 0 ? '+' : '−'}${(distance / 100).toFixed(1)}`;
+      el.direction.textContent = 'semitones off';
+    } else {
+      el.cents.textContent = formatCents(cents);
+      el.direction.textContent = distance <= TOLERANCE_CENTS
+        ? 'in sruti'
+        : cents < 0 ? 'flat ¢' : 'sharp ¢';
+    }
+
+    if (!drilling) el.octave.textContent = 'nearest swarasthana';
+    else if (distance <= 600) el.octave.textContent = 'in the right octave';
+    else if (sameSwara(singing, target)) el.octave.textContent = cents < 0 ? 'an octave low' : 'an octave high';
+    else el.octave.textContent = `singing ${labelOf(singing)}`;
+
+    el.swara.classList.toggle('intune', distance <= TOLERANCE_CENTS);
+    renderNeedle(cents, true);
+
+    if (drilling) {
+      const outcome = state.drill.feedPitch(cents, elapsed, now);
+      el.holdFill.style.width = `${state.drill.holdProgress * 100}%`;
+      if (outcome) {
+        const swara = labelOf(outcome.swara);
+        afterAdvance();
+        if (!outcome.landed && !state.drill.finished) {
+          flash(`Moving on from ${swara}`,
+            'Logged as a miss — the report at the end will say what went wrong there.',
+            'near', now);
+        }
+        return;
+      }
+    }
+
+    if (now > state.messageUntil && !(state.drill && state.drill.finished)) {
+      const advice = liveAdvice({ cents, target, singing, wobble });
+      say(advice.headline, advice.detail, advice.tone);
+    }
+  }
+
+  if (navigator.mediaDevices?.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      if (state.mic && state.mic.active) populateDevices();
+    });
+  }
+
+  setMode('tuner');
+  requestAnimationFrame(loop);
+}
+
+function drawTicks(container) {
+  const marks = [];
+  for (let cents = -50; cents <= 50; cents += 10) {
+    const kind = cents === 0 ? ' center' : Math.abs(cents) === 50 ? ' major' : '';
+    marks.push(`<div class="tick${kind}" style="left:${50 + cents}%"></div>`);
+    // Labels every 20c: the edges would be clipped by the ribbon's own border.
+    if (cents % 20 === 0) {
+      marks.push(`<div class="tick-label" style="left:${50 + cents}%">${cents > 0 ? '+' : ''}${cents}</div>`);
+    }
+  }
+  container.innerHTML = marks.join('');
+}
+
+// ---- src/main.js -------------------------------------------------
+start();
+})();
+</script>
+</body>
+</html>
