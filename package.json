@@ -12,7 +12,7 @@
   },
   "scripts": {
     "start": "node tools/serve.js",
-    "test": "node --test \"test/**/*.test.js\"",
+    "test": "node --test test/*.test.js",
     "build": "node tools/build.js"
   },
   "engines": {
