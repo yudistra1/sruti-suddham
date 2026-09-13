@@ -6,9 +6,54 @@
  * it testable under plain Node.
  */
 
-/** Adhara shadja. A#3 — a comfortable Sa for a male voice. */
-export const TONIC_HZ = 233.08188;
-export const TONIC_LABEL = 'A♯3';
+/** Note names, sharps only — the picker offers one spelling per pitch class. */
+export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+/** Octaves worth offering: 2 reaches low male voices, 4 reaches high female ones. */
+export const TONIC_OCTAVES = [2, 3, 4];
+
+/** Where it starts: A#3, a comfortable Sa for a male voice. */
+export const DEFAULT_TONIC = { note: 'A#', octave: 3 };
+
+const A4_HZ = 440;
+
+/** Frequency of a named note, equal-tempered against A4 = 440 Hz. */
+export function noteToHz(note, octave) {
+  const index = NOTE_NAMES.indexOf(note);
+  if (index < 0) throw new Error(`unknown note: ${note}`);
+  const semitonesFromA4 = index - 9 + (octave - 4) * 12;  // A4 is index 9, octave 4
+  return A4_HZ * Math.pow(2, semitonesFromA4 / 12);
+}
+
+/** Display form, with a real sharp glyph. */
+export function noteLabel(note, octave) {
+  return `${note.replace('#', '♯')}${octave}`;
+}
+
+/**
+ * The adhara shadja is the one piece of mutable state in here. Every target,
+ * every ratio and the tanpura itself are derived from it, so changing it
+ * retunes the whole app at once.
+ */
+let tonic = { ...DEFAULT_TONIC, hz: noteToHz(DEFAULT_TONIC.note, DEFAULT_TONIC.octave) };
+
+export function setTonic(note, octave) {
+  tonic = { note, octave, hz: noteToHz(note, octave) };
+  return tonic;
+}
+
+export function getTonic() {
+  return tonic;
+}
+
+/** Frequency of Sa. */
+export function tonicHz() {
+  return tonic.hz;
+}
+
+export function tonicLabel() {
+  return noteLabel(tonic.note, tonic.octave);
+}
 
 /**
  * Just-intonation ratios for the twelve swarasthanas.
@@ -94,7 +139,7 @@ export function ratioFor(semitone, temperament = 'just') {
 
 /** Absolute frequency of a semitone offset from Sa. */
 export function frequencyOf(semitone, temperament = 'just') {
-  return TONIC_HZ * ratioFor(semitone, temperament);
+  return tonic.hz * ratioFor(semitone, temperament);
 }
 
 /** Signed distance in cents. Positive means `freq` is sharp of `reference`. */
@@ -155,7 +200,7 @@ export function centsAboveSa(pitchClass, temperament = 'just') {
  * targets can sit up to ~22c away from where equal temperament puts them.
  */
 export function nearestSwarasthana(freq, temperament = 'just') {
-  const guess = Math.round(12 * Math.log(freq / TONIC_HZ) / Math.LN2);
+  const guess = Math.round(12 * Math.log(freq / tonic.hz) / Math.LN2);
   let best = guess;
   let bestDistance = Infinity;
   for (let s = guess - 1; s <= guess + 1; s += 1) {

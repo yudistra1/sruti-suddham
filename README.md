@@ -16,7 +16,9 @@ headphones strongly recommended)
 
 ## What it does
 
-Three modes, one tonic — Sa is A♯3, 233.08 Hz.
+Pick your sruti — any of the twelve notes across three octaves — and everything
+retunes: the targets, the drills and the tanpura. It defaults to A♯3 and
+remembers what you chose. Then three modes:
 
 - **Free tuner.** Names the nearest of the twelve swarasthanas and shows the
   deviation in cents.
@@ -92,7 +94,7 @@ rather than opened, for the same reason.
 
 ```
 src/
-  tuning.js      ratios, swarasthanas, cuts, cents arithmetic
+  tuning.js      the tonic, ratios, swarasthanas, cuts, cents arithmetic
   pitch.js       NSDF pitch detection
   microphone.js  capture, device selection, constraint fallbacks
   tanpura.js     Karplus-Strong drone and reference tones
@@ -155,8 +157,8 @@ same top-level name, rather than emitting a silently broken file.
   iPhone, which adds latency and heavy processing. There is a device picker in
   the toolbar for this reason; it is usually what you want.
 - **Monophonic only.** One voice, no accompaniment.
-- **Fixed tonic.** A♯3 is hard-coded. Making it selectable is mostly a matter of
-  exposing `TONIC_HZ`; the tanpura and every target derive from it already.
+- **Octave range.** The tonic picker covers octaves 2–4, which spans most voices
+  but not all of them.
 - **Gamaka.** The tool measures steady swaras. It has nothing useful to say about
   ornamented ones, and a heavily gamaka-laden phrase will read as wobble.
 

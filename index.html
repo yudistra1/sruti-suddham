@@ -22,13 +22,16 @@
     </div>
     <div class="sruti-chip">
       <div>
-        <div class="lbl">Adhara Shadja</div>
-        <div class="val">A&#9839;<sub style="font-size:.55em">3</sub></div>
+        <label class="lbl" for="tonic-note">Adhara Shadja</label>
+        <div class="tonic-picker">
+          <select class="tonic-sel" id="tonic-note" aria-label="Tonic note"></select>
+          <select class="tonic-sel tonic-oct" id="tonic-octave" aria-label="Tonic octave"></select>
+        </div>
       </div>
       <div style="width:1px;align-self:stretch;background:var(--line-soft)"></div>
       <div>
         <div class="lbl">Sa</div>
-        <div class="hz">233.08 Hz</div>
+        <div class="hz" id="tonic-hz">233.08 Hz</div>
       </div>
     </div>
   </header>

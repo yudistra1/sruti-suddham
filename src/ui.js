@@ -4,8 +4,9 @@
  */
 
 import {
-  CUTS, TONIC_HZ, centsBetween, describe, frequencyOf, htmlLabelOf,
-  labelOf, nearestSwarasthana, ratioLabel, sameSwara,
+  CUTS, DEFAULT_TONIC, NOTE_NAMES, TONIC_OCTAVES, centsBetween, describe,
+  frequencyOf, getTonic, htmlLabelOf, labelOf, nearestSwarasthana, noteLabel,
+  noteToHz, ratioLabel, sameSwara, setTonic, tonicHz,
 } from './tuning.js';
 import { TOLERANCE_CENTS, HOLD_MS, mean, standardDeviation } from './analysis.js';
 import { PitchDetector } from './pitch.js';
@@ -36,6 +37,9 @@ export function start() {
     micDot: $('mic-dot'),
     micLabel: $('mic-label'),
     micSelect: $('mic-select'),
+    tonicNote: $('tonic-note'),
+    tonicOctave: $('tonic-octave'),
+    tonicHz: $('tonic-hz'),
     tanpuraButton: $('tanpura-btn'),
     volume: $('vol'),
     warning: $('warn'),
@@ -160,7 +164,7 @@ export function start() {
 
     const heading = state.drill
       ? [state.drill.cut.title, state.drill.cut.blurb]
-      : ['The twelve swarasthanas', 'Free tuner · nearest swara in A♯ sruti'];
+      : ['The twelve swarasthanas', `Free tuner · nearest swara in ${noteLabel(getTonic().note, getTonic().octave)} sruti`];
     el.cutTitle.textContent = heading[0];
     el.cutMeta.textContent = `${heading[1]} · ${state.temperament === 'just' ? 'just intonation' : 'equal temperament'}`;
 
@@ -277,7 +281,7 @@ export function start() {
     } else {
       el.glyph.textContent = 'Sa';
       el.devanagari.textContent = describe(0).devanagari;
-      el.ratio.textContent = `1 : 1  ·  ${TONIC_HZ.toFixed(2)} Hz`;
+      el.ratio.textContent = `1 : 1  ·  ${tonicHz().toFixed(2)} Hz`;
     }
     promptForTarget();
   }
@@ -289,6 +293,60 @@ export function start() {
     if (state.tanpura) state.tanpura.setTemperament(temperament);
     renderLadder();
     renderTarget();
+  }
+
+  /* ---------------------------------------------------------------- tonic */
+
+  const TONIC_KEY = 'sruti-suddham:tonic';
+
+  function loadTonic() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(TONIC_KEY) || 'null');
+      if (saved && NOTE_NAMES.includes(saved.note) && TONIC_OCTAVES.includes(saved.octave)) {
+        return saved;
+      }
+    } catch {
+      // Private browsing, blocked storage — fall through to the default.
+    }
+    return DEFAULT_TONIC;
+  }
+
+  function rememberTonic(note, octave) {
+    try {
+      localStorage.setItem(TONIC_KEY, JSON.stringify({ note, octave }));
+    } catch {
+      // Not worth telling the user about; the session still works.
+    }
+  }
+
+  function buildTonicPicker() {
+    el.tonicNote.innerHTML = NOTE_NAMES
+      .map((note) => `<option value="${note}">${note.replace('#', '\u266F')}</option>`)
+      .join('');
+    el.tonicOctave.innerHTML = TONIC_OCTAVES
+      .map((octave) => `<option value="${octave}">${octave}</option>`)
+      .join('');
+
+    const start = loadTonic();
+    setTonic(start.note, start.octave);
+    el.tonicNote.value = start.note;
+    el.tonicOctave.value = String(start.octave);
+    el.tonicHz.textContent = `${tonicHz().toFixed(2)} Hz`;
+
+    const onChange = () => {
+      const note = el.tonicNote.value;
+      const octave = Number(el.tonicOctave.value);
+      setTonic(note, octave);
+      rememberTonic(note, octave);
+      el.tonicHz.textContent = `${tonicHz().toFixed(2)} Hz`;
+      // The drone is built from the tonic, and any results so far were measured
+      // against the old one, so both have to go.
+      if (state.tanpura) state.tanpura.retune();
+      state.smoothedHz = -1;
+      setMode(state.mode);
+    };
+    el.tonicNote.addEventListener('change', onChange);
+    el.tonicOctave.addEventListener('change', onChange);
   }
 
   /* ------------------------------------------------------------- controls */
@@ -521,6 +579,7 @@ export function start() {
     });
   }
 
+  buildTonicPicker();
   setMode('tuner');
   requestAnimationFrame(loop);
 }

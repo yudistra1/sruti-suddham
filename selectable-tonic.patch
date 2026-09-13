@@ -1,0 +1,720 @@
+diff --git a/README.md b/README.md
+index 845bbc3..c8919b8 100644
+--- a/README.md
++++ b/README.md
+@@ -16,7 +16,9 @@ headphones strongly recommended)
+ 
+ ## What it does
+ 
+-Three modes, one tonic — Sa is A♯3, 233.08 Hz.
++Pick your sruti — any of the twelve notes across three octaves — and everything
++retunes: the targets, the drills and the tanpura. It defaults to A♯3 and
++remembers what you chose. Then three modes:
+ 
+ - **Free tuner.** Names the nearest of the twelve swarasthanas and shows the
+   deviation in cents.
+@@ -92,7 +94,7 @@ rather than opened, for the same reason.
+ 
+ ```
+ src/
+-  tuning.js      ratios, swarasthanas, cuts, cents arithmetic
++  tuning.js      the tonic, ratios, swarasthanas, cuts, cents arithmetic
+   pitch.js       NSDF pitch detection
+   microphone.js  capture, device selection, constraint fallbacks
+   tanpura.js     Karplus-Strong drone and reference tones
+@@ -155,8 +157,8 @@ same top-level name, rather than emitting a silently broken file.
+   iPhone, which adds latency and heavy processing. There is a device picker in
+   the toolbar for this reason; it is usually what you want.
+ - **Monophonic only.** One voice, no accompaniment.
+-- **Fixed tonic.** A♯3 is hard-coded. Making it selectable is mostly a matter of
+-  exposing `TONIC_HZ`; the tanpura and every target derive from it already.
++- **Octave range.** The tonic picker covers octaves 2–4, which spans most voices
++  but not all of them.
+ - **Gamaka.** The tool measures steady swaras. It has nothing useful to say about
+   ornamented ones, and a heavily gamaka-laden phrase will read as wobble.
+ 
+diff --git a/dist/sruti-suddham.html b/dist/sruti-suddham.html
+index 48c4eaa..085d7e1 100644
+--- a/dist/sruti-suddham.html
++++ b/dist/sruti-suddham.html
+@@ -103,6 +103,18 @@
+   }
+   .sruti-chip .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); line-height:1.2; }
+   .sruti-chip .val{ font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1; color:var(--brass); }
++  .tonic-picker{ display:flex; align-items:baseline; gap:2px; }
++  .tonic-sel{
++    appearance:none; border:0; background:transparent; cursor:pointer;
++    font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1;
++    color:var(--brass); padding:0 14px 0 0; margin:0;
++    background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
++    background-position:calc(100% - 5px) 60%, calc(100% - 1px) 60%;
++    background-size:4px 4px, 4px 4px; background-repeat:no-repeat;
++  }
++  .tonic-sel.tonic-oct{ font-size:13px; padding-right:12px; }
++  .tonic-sel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; border-radius:2px; }
++  .tonic-sel option{ font-family:var(--fs); font-size:14px; color:var(--text); background:var(--surface); }
+   .sruti-chip .hz{ font-family:var(--fm); font-size:11.5px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+ 
+   /* ---------- controls ---------- */
+@@ -312,13 +324,16 @@
+     </div>
+     <div class="sruti-chip">
+       <div>
+-        <div class="lbl">Adhara Shadja</div>
+-        <div class="val">A&#9839;<sub style="font-size:.55em">3</sub></div>
++        <label class="lbl" for="tonic-note">Adhara Shadja</label>
++        <div class="tonic-picker">
++          <select class="tonic-sel" id="tonic-note" aria-label="Tonic note"></select>
++          <select class="tonic-sel tonic-oct" id="tonic-octave" aria-label="Tonic octave"></select>
++        </div>
+       </div>
+       <div style="width:1px;align-self:stretch;background:var(--line-soft)"></div>
+       <div>
+         <div class="lbl">Sa</div>
+-        <div class="hz">233.08 Hz</div>
++        <div class="hz" id="tonic-hz">233.08 Hz</div>
+       </div>
+     </div>
+   </header>
+@@ -431,9 +446,54 @@
+  * it testable under plain Node.
+  */
+ 
+-/** Adhara shadja. A#3 — a comfortable Sa for a male voice. */
+-const TONIC_HZ = 233.08188;
+-const TONIC_LABEL = 'A♯3';
++/** Note names, sharps only — the picker offers one spelling per pitch class. */
++const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
++
++/** Octaves worth offering: 2 reaches low male voices, 4 reaches high female ones. */
++const TONIC_OCTAVES = [2, 3, 4];
++
++/** Where it starts: A#3, a comfortable Sa for a male voice. */
++const DEFAULT_TONIC = { note: 'A#', octave: 3 };
++
++const A4_HZ = 440;
++
++/** Frequency of a named note, equal-tempered against A4 = 440 Hz. */
++function noteToHz(note, octave) {
++  const index = NOTE_NAMES.indexOf(note);
++  if (index < 0) throw new Error(`unknown note: ${note}`);
++  const semitonesFromA4 = index - 9 + (octave - 4) * 12;  // A4 is index 9, octave 4
++  return A4_HZ * Math.pow(2, semitonesFromA4 / 12);
++}
++
++/** Display form, with a real sharp glyph. */
++function noteLabel(note, octave) {
++  return `${note.replace('#', '♯')}${octave}`;
++}
++
++/**
++ * The adhara shadja is the one piece of mutable state in here. Every target,
++ * every ratio and the tanpura itself are derived from it, so changing it
++ * retunes the whole app at once.
++ */
++let tonic = { ...DEFAULT_TONIC, hz: noteToHz(DEFAULT_TONIC.note, DEFAULT_TONIC.octave) };
++
++function setTonic(note, octave) {
++  tonic = { note, octave, hz: noteToHz(note, octave) };
++  return tonic;
++}
++
++function getTonic() {
++  return tonic;
++}
++
++/** Frequency of Sa. */
++function tonicHz() {
++  return tonic.hz;
++}
++
++function tonicLabel() {
++  return noteLabel(tonic.note, tonic.octave);
++}
+ 
+ /**
+  * Just-intonation ratios for the twelve swarasthanas.
+@@ -519,7 +579,7 @@ function ratioFor(semitone, temperament = 'just') {
+ 
+ /** Absolute frequency of a semitone offset from Sa. */
+ function frequencyOf(semitone, temperament = 'just') {
+-  return TONIC_HZ * ratioFor(semitone, temperament);
++  return tonic.hz * ratioFor(semitone, temperament);
+ }
+ 
+ /** Signed distance in cents. Positive means `freq` is sharp of `reference`. */
+@@ -580,7 +640,7 @@ function centsAboveSa(pitchClass, temperament = 'just') {
+  * targets can sit up to ~22c away from where equal temperament puts them.
+  */
+ function nearestSwarasthana(freq, temperament = 'just') {
+-  const guess = Math.round(12 * Math.log(freq / TONIC_HZ) / Math.LN2);
++  const guess = Math.round(12 * Math.log(freq / tonic.hz) / Math.LN2);
+   let best = guess;
+   let bestDistance = Infinity;
+   for (let s = guess - 1; s <= guess + 1; s += 1) {
+@@ -1011,11 +1071,12 @@ class Tanpura {
+   /** Classic tuning: Pa a fifth below Sa, two Sa, then Sa an octave down. */
+   build() {
+     const fifth = this.temperament === 'just' ? 3 / 2 : Math.pow(2, 7 / 12);
++    const sa = tonicHz();
+     this.strings = [
+-      renderString(this.context, (TONIC_HZ * fifth) / 2, 5),
+-      renderString(this.context, TONIC_HZ, 5),
+-      renderString(this.context, TONIC_HZ, 5),
+-      renderString(this.context, TONIC_HZ / 2, 6),
++      renderString(this.context, (sa * fifth) / 2, 5),
++      renderString(this.context, sa, 5),
++      renderString(this.context, sa, 5),
++      renderString(this.context, sa / 2, 6),
+     ];
+   }
+ 
+@@ -1086,15 +1147,19 @@ class Tanpura {
+   }
+ 
+   /** Retuning means re-rendering the strings, so restart if we are mid-drone. */
+-  setTemperament(temperament) {
+-    if (temperament === this.temperament) return;
+-    this.temperament = temperament;
++  retune() {
+     this.strings = null;
+     if (this.playing) {
+       this.stop();
+       this.start();
+     }
+   }
++
++  setTemperament(temperament) {
++    if (temperament === this.temperament) return;
++    this.temperament = temperament;
++    this.retune();
++  }
+ }
+ 
+ /**
+@@ -1591,6 +1656,9 @@ function start() {
+     micDot: $('mic-dot'),
+     micLabel: $('mic-label'),
+     micSelect: $('mic-select'),
++    tonicNote: $('tonic-note'),
++    tonicOctave: $('tonic-octave'),
++    tonicHz: $('tonic-hz'),
+     tanpuraButton: $('tanpura-btn'),
+     volume: $('vol'),
+     warning: $('warn'),
+@@ -1715,7 +1783,7 @@ function start() {
+ 
+     const heading = state.drill
+       ? [state.drill.cut.title, state.drill.cut.blurb]
+-      : ['The twelve swarasthanas', 'Free tuner · nearest swara in A♯ sruti'];
++      : ['The twelve swarasthanas', `Free tuner · nearest swara in ${noteLabel(getTonic().note, getTonic().octave)} sruti`];
+     el.cutTitle.textContent = heading[0];
+     el.cutMeta.textContent = `${heading[1]} · ${state.temperament === 'just' ? 'just intonation' : 'equal temperament'}`;
+ 
+@@ -1832,7 +1900,7 @@ function start() {
+     } else {
+       el.glyph.textContent = 'Sa';
+       el.devanagari.textContent = describe(0).devanagari;
+-      el.ratio.textContent = `1 : 1  ·  ${TONIC_HZ.toFixed(2)} Hz`;
++      el.ratio.textContent = `1 : 1  ·  ${tonicHz().toFixed(2)} Hz`;
+     }
+     promptForTarget();
+   }
+@@ -1846,6 +1914,60 @@ function start() {
+     renderTarget();
+   }
+ 
++  /* ---------------------------------------------------------------- tonic */
++
++  const TONIC_KEY = 'sruti-suddham:tonic';
++
++  function loadTonic() {
++    try {
++      const saved = JSON.parse(localStorage.getItem(TONIC_KEY) || 'null');
++      if (saved && NOTE_NAMES.includes(saved.note) && TONIC_OCTAVES.includes(saved.octave)) {
++        return saved;
++      }
++    } catch {
++      // Private browsing, blocked storage — fall through to the default.
++    }
++    return DEFAULT_TONIC;
++  }
++
++  function rememberTonic(note, octave) {
++    try {
++      localStorage.setItem(TONIC_KEY, JSON.stringify({ note, octave }));
++    } catch {
++      // Not worth telling the user about; the session still works.
++    }
++  }
++
++  function buildTonicPicker() {
++    el.tonicNote.innerHTML = NOTE_NAMES
++      .map((note) => `<option value="${note}">${note.replace('#', '\u266F')}</option>`)
++      .join('');
++    el.tonicOctave.innerHTML = TONIC_OCTAVES
++      .map((octave) => `<option value="${octave}">${octave}</option>`)
++      .join('');
++
++    const start = loadTonic();
++    setTonic(start.note, start.octave);
++    el.tonicNote.value = start.note;
++    el.tonicOctave.value = String(start.octave);
++    el.tonicHz.textContent = `${tonicHz().toFixed(2)} Hz`;
++
++    const onChange = () => {
++      const note = el.tonicNote.value;
++      const octave = Number(el.tonicOctave.value);
++      setTonic(note, octave);
++      rememberTonic(note, octave);
++      el.tonicHz.textContent = `${tonicHz().toFixed(2)} Hz`;
++      // The drone is built from the tonic, and any results so far were measured
++      // against the old one, so both have to go.
++      if (state.tanpura) state.tanpura.retune();
++      state.smoothedHz = -1;
++      setMode(state.mode);
++    };
++    el.tonicNote.addEventListener('change', onChange);
++    el.tonicOctave.addEventListener('change', onChange);
++  }
++
+   /* ------------------------------------------------------------- controls */
+ 
+   el.modeTuner.addEventListener('click', () => setMode('tuner'));
+@@ -2076,6 +2198,7 @@ function start() {
+     });
+   }
+ 
++  buildTonicPicker();
+   setMode('tuner');
+   requestAnimationFrame(loop);
+ }
+diff --git a/index.html b/index.html
+index 0a0739c..c89c799 100644
+--- a/index.html
++++ b/index.html
+@@ -22,13 +22,16 @@
+     </div>
+     <div class="sruti-chip">
+       <div>
+-        <div class="lbl">Adhara Shadja</div>
+-        <div class="val">A&#9839;<sub style="font-size:.55em">3</sub></div>
++        <label class="lbl" for="tonic-note">Adhara Shadja</label>
++        <div class="tonic-picker">
++          <select class="tonic-sel" id="tonic-note" aria-label="Tonic note"></select>
++          <select class="tonic-sel tonic-oct" id="tonic-octave" aria-label="Tonic octave"></select>
++        </div>
+       </div>
+       <div style="width:1px;align-self:stretch;background:var(--line-soft)"></div>
+       <div>
+         <div class="lbl">Sa</div>
+-        <div class="hz">233.08 Hz</div>
++        <div class="hz" id="tonic-hz">233.08 Hz</div>
+       </div>
+     </div>
+   </header>
+diff --git a/src/styles.css b/src/styles.css
+index d896a2e..de64c68 100644
+--- a/src/styles.css
++++ b/src/styles.css
+@@ -90,6 +90,18 @@
+   }
+   .sruti-chip .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); line-height:1.2; }
+   .sruti-chip .val{ font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1; color:var(--brass); }
++  .tonic-picker{ display:flex; align-items:baseline; gap:2px; }
++  .tonic-sel{
++    appearance:none; border:0; background:transparent; cursor:pointer;
++    font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1;
++    color:var(--brass); padding:0 14px 0 0; margin:0;
++    background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
++    background-position:calc(100% - 5px) 60%, calc(100% - 1px) 60%;
++    background-size:4px 4px, 4px 4px; background-repeat:no-repeat;
++  }
++  .tonic-sel.tonic-oct{ font-size:13px; padding-right:12px; }
++  .tonic-sel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; border-radius:2px; }
++  .tonic-sel option{ font-family:var(--fs); font-size:14px; color:var(--text); background:var(--surface); }
+   .sruti-chip .hz{ font-family:var(--fm); font-size:11.5px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+ 
+   /* ---------- controls ---------- */
+diff --git a/src/tanpura.js b/src/tanpura.js
+index 8aa03aa..37d6314 100644
+--- a/src/tanpura.js
++++ b/src/tanpura.js
+@@ -12,7 +12,7 @@
+  * "tanpura".
+  */
+ 
+-import { TONIC_HZ } from './tuning.js';
++import { tonicHz } from './tuning.js';
+ 
+ const PLUCK_INTERVAL = 1.05;   // seconds between strings
+ const SCHEDULE_AHEAD = 1.2;    // seconds of lookahead
+@@ -88,11 +88,12 @@ export class Tanpura {
+   /** Classic tuning: Pa a fifth below Sa, two Sa, then Sa an octave down. */
+   build() {
+     const fifth = this.temperament === 'just' ? 3 / 2 : Math.pow(2, 7 / 12);
++    const sa = tonicHz();
+     this.strings = [
+-      renderString(this.context, (TONIC_HZ * fifth) / 2, 5),
+-      renderString(this.context, TONIC_HZ, 5),
+-      renderString(this.context, TONIC_HZ, 5),
+-      renderString(this.context, TONIC_HZ / 2, 6),
++      renderString(this.context, (sa * fifth) / 2, 5),
++      renderString(this.context, sa, 5),
++      renderString(this.context, sa, 5),
++      renderString(this.context, sa / 2, 6),
+     ];
+   }
+ 
+@@ -163,15 +164,19 @@ export class Tanpura {
+   }
+ 
+   /** Retuning means re-rendering the strings, so restart if we are mid-drone. */
+-  setTemperament(temperament) {
+-    if (temperament === this.temperament) return;
+-    this.temperament = temperament;
++  retune() {
+     this.strings = null;
+     if (this.playing) {
+       this.stop();
+       this.start();
+     }
+   }
++
++  setTemperament(temperament) {
++    if (temperament === this.temperament) return;
++    this.temperament = temperament;
++    this.retune();
++  }
+ }
+ 
+ /**
+diff --git a/src/tuning.js b/src/tuning.js
+index 4bbb0da..65a34c8 100644
+--- a/src/tuning.js
++++ b/src/tuning.js
+@@ -6,9 +6,54 @@
+  * it testable under plain Node.
+  */
+ 
+-/** Adhara shadja. A#3 — a comfortable Sa for a male voice. */
+-export const TONIC_HZ = 233.08188;
+-export const TONIC_LABEL = 'A♯3';
++/** Note names, sharps only — the picker offers one spelling per pitch class. */
++export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
++
++/** Octaves worth offering: 2 reaches low male voices, 4 reaches high female ones. */
++export const TONIC_OCTAVES = [2, 3, 4];
++
++/** Where it starts: A#3, a comfortable Sa for a male voice. */
++export const DEFAULT_TONIC = { note: 'A#', octave: 3 };
++
++const A4_HZ = 440;
++
++/** Frequency of a named note, equal-tempered against A4 = 440 Hz. */
++export function noteToHz(note, octave) {
++  const index = NOTE_NAMES.indexOf(note);
++  if (index < 0) throw new Error(`unknown note: ${note}`);
++  const semitonesFromA4 = index - 9 + (octave - 4) * 12;  // A4 is index 9, octave 4
++  return A4_HZ * Math.pow(2, semitonesFromA4 / 12);
++}
++
++/** Display form, with a real sharp glyph. */
++export function noteLabel(note, octave) {
++  return `${note.replace('#', '♯')}${octave}`;
++}
++
++/**
++ * The adhara shadja is the one piece of mutable state in here. Every target,
++ * every ratio and the tanpura itself are derived from it, so changing it
++ * retunes the whole app at once.
++ */
++let tonic = { ...DEFAULT_TONIC, hz: noteToHz(DEFAULT_TONIC.note, DEFAULT_TONIC.octave) };
++
++export function setTonic(note, octave) {
++  tonic = { note, octave, hz: noteToHz(note, octave) };
++  return tonic;
++}
++
++export function getTonic() {
++  return tonic;
++}
++
++/** Frequency of Sa. */
++export function tonicHz() {
++  return tonic.hz;
++}
++
++export function tonicLabel() {
++  return noteLabel(tonic.note, tonic.octave);
++}
+ 
+ /**
+  * Just-intonation ratios for the twelve swarasthanas.
+@@ -94,7 +139,7 @@ export function ratioFor(semitone, temperament = 'just') {
+ 
+ /** Absolute frequency of a semitone offset from Sa. */
+ export function frequencyOf(semitone, temperament = 'just') {
+-  return TONIC_HZ * ratioFor(semitone, temperament);
++  return tonic.hz * ratioFor(semitone, temperament);
+ }
+ 
+ /** Signed distance in cents. Positive means `freq` is sharp of `reference`. */
+@@ -155,7 +200,7 @@ export function centsAboveSa(pitchClass, temperament = 'just') {
+  * targets can sit up to ~22c away from where equal temperament puts them.
+  */
+ export function nearestSwarasthana(freq, temperament = 'just') {
+-  const guess = Math.round(12 * Math.log(freq / TONIC_HZ) / Math.LN2);
++  const guess = Math.round(12 * Math.log(freq / tonic.hz) / Math.LN2);
+   let best = guess;
+   let bestDistance = Infinity;
+   for (let s = guess - 1; s <= guess + 1; s += 1) {
+diff --git a/src/ui.js b/src/ui.js
+index dadd97d..a5c3822 100644
+--- a/src/ui.js
++++ b/src/ui.js
+@@ -4,8 +4,9 @@
+  */
+ 
+ import {
+-  CUTS, TONIC_HZ, centsBetween, describe, frequencyOf, htmlLabelOf,
+-  labelOf, nearestSwarasthana, ratioLabel, sameSwara,
++  CUTS, DEFAULT_TONIC, NOTE_NAMES, TONIC_OCTAVES, centsBetween, describe,
++  frequencyOf, getTonic, htmlLabelOf, labelOf, nearestSwarasthana, noteLabel,
++  noteToHz, ratioLabel, sameSwara, setTonic, tonicHz,
+ } from './tuning.js';
+ import { TOLERANCE_CENTS, HOLD_MS, mean, standardDeviation } from './analysis.js';
+ import { PitchDetector } from './pitch.js';
+@@ -36,6 +37,9 @@ export function start() {
+     micDot: $('mic-dot'),
+     micLabel: $('mic-label'),
+     micSelect: $('mic-select'),
++    tonicNote: $('tonic-note'),
++    tonicOctave: $('tonic-octave'),
++    tonicHz: $('tonic-hz'),
+     tanpuraButton: $('tanpura-btn'),
+     volume: $('vol'),
+     warning: $('warn'),
+@@ -160,7 +164,7 @@ export function start() {
+ 
+     const heading = state.drill
+       ? [state.drill.cut.title, state.drill.cut.blurb]
+-      : ['The twelve swarasthanas', 'Free tuner · nearest swara in A♯ sruti'];
++      : ['The twelve swarasthanas', `Free tuner · nearest swara in ${noteLabel(getTonic().note, getTonic().octave)} sruti`];
+     el.cutTitle.textContent = heading[0];
+     el.cutMeta.textContent = `${heading[1]} · ${state.temperament === 'just' ? 'just intonation' : 'equal temperament'}`;
+ 
+@@ -277,7 +281,7 @@ export function start() {
+     } else {
+       el.glyph.textContent = 'Sa';
+       el.devanagari.textContent = describe(0).devanagari;
+-      el.ratio.textContent = `1 : 1  ·  ${TONIC_HZ.toFixed(2)} Hz`;
++      el.ratio.textContent = `1 : 1  ·  ${tonicHz().toFixed(2)} Hz`;
+     }
+     promptForTarget();
+   }
+@@ -291,6 +295,60 @@ export function start() {
+     renderTarget();
+   }
+ 
++  /* ---------------------------------------------------------------- tonic */
++
++  const TONIC_KEY = 'sruti-suddham:tonic';
++
++  function loadTonic() {
++    try {
++      const saved = JSON.parse(localStorage.getItem(TONIC_KEY) || 'null');
++      if (saved && NOTE_NAMES.includes(saved.note) && TONIC_OCTAVES.includes(saved.octave)) {
++        return saved;
++      }
++    } catch {
++      // Private browsing, blocked storage — fall through to the default.
++    }
++    return DEFAULT_TONIC;
++  }
++
++  function rememberTonic(note, octave) {
++    try {
++      localStorage.setItem(TONIC_KEY, JSON.stringify({ note, octave }));
++    } catch {
++      // Not worth telling the user about; the session still works.
++    }
++  }
++
++  function buildTonicPicker() {
++    el.tonicNote.innerHTML = NOTE_NAMES
++      .map((note) => `<option value="${note}">${note.replace('#', '\u266F')}</option>`)
++      .join('');
++    el.tonicOctave.innerHTML = TONIC_OCTAVES
++      .map((octave) => `<option value="${octave}">${octave}</option>`)
++      .join('');
++
++    const start = loadTonic();
++    setTonic(start.note, start.octave);
++    el.tonicNote.value = start.note;
++    el.tonicOctave.value = String(start.octave);
++    el.tonicHz.textContent = `${tonicHz().toFixed(2)} Hz`;
++
++    const onChange = () => {
++      const note = el.tonicNote.value;
++      const octave = Number(el.tonicOctave.value);
++      setTonic(note, octave);
++      rememberTonic(note, octave);
++      el.tonicHz.textContent = `${tonicHz().toFixed(2)} Hz`;
++      // The drone is built from the tonic, and any results so far were measured
++      // against the old one, so both have to go.
++      if (state.tanpura) state.tanpura.retune();
++      state.smoothedHz = -1;
++      setMode(state.mode);
++    };
++    el.tonicNote.addEventListener('change', onChange);
++    el.tonicOctave.addEventListener('change', onChange);
++  }
++
+   /* ------------------------------------------------------------- controls */
+ 
+   el.modeTuner.addEventListener('click', () => setMode('tuner'));
+@@ -521,6 +579,7 @@ export function start() {
+     });
+   }
+ 
++  buildTonicPicker();
+   setMode('tuner');
+   requestAnimationFrame(loop);
+ }
+diff --git a/test/tuning.test.js b/test/tuning.test.js
+index aa6e0e9..b1ef4df 100644
+--- a/test/tuning.test.js
++++ b/test/tuning.test.js
+@@ -2,11 +2,23 @@ import test from 'node:test';
+ import assert from 'node:assert/strict';
+ 
+ import {
+-  CUTS, MAYAMALAVAGOWLA, TONIC_HZ,
+-  centsAboveSa, centsBetween, describe, frequencyOf, htmlLabelOf,
+-  labelOf, nearestSwarasthana, ratioLabel, sameSwara,
++  CUTS, DEFAULT_TONIC, MAYAMALAVAGOWLA, NOTE_NAMES, TONIC_OCTAVES,
++  centsAboveSa, centsBetween, describe, frequencyOf, getTonic, htmlLabelOf,
++  labelOf, nearestSwarasthana, noteLabel, noteToHz, ratioLabel, sameSwara,
++  setTonic, tonicHz,
+ } from '../src/tuning.js';
+ 
++/** The tonic is module state, so any test that moves it puts it back. */
++const withTonic = (note, octave, body) => {
++  const previous = getTonic();
++  try {
++    setTonic(note, octave);
++    body();
++  } finally {
++    setTonic(previous.note, previous.octave);
++  }
++};
++
+ const closeTo = (actual, expected, tolerance, message) => {
+   assert.ok(
+     Math.abs(actual - expected) <= tolerance,
+@@ -15,14 +27,14 @@ const closeTo = (actual, expected, tolerance, message) => {
+ };
+ 
+ test('Sa is the tonic and the upper Sa is exactly an octave up', () => {
+-  assert.equal(frequencyOf(0), TONIC_HZ);
+-  assert.equal(frequencyOf(12), TONIC_HZ * 2);
+-  assert.equal(frequencyOf(-12), TONIC_HZ / 2);
++  assert.equal(frequencyOf(0), tonicHz());
++  assert.equal(frequencyOf(12), tonicHz() * 2);
++  assert.equal(frequencyOf(-12), tonicHz() / 2);
+ });
+ 
+ test('just intonation puts Pa at a 3:2 and Ga3 at a 5:4', () => {
+-  closeTo(frequencyOf(7) / TONIC_HZ, 1.5, 1e-12);
+-  closeTo(frequencyOf(4) / TONIC_HZ, 1.25, 1e-12);
++  closeTo(frequencyOf(7) / tonicHz(), 1.5, 1e-12);
++  closeTo(frequencyOf(4) / tonicHz(), 1.25, 1e-12);
+ });
+ 
+ test('the just targets a fretted ear gets wrong sit below the equal-tempered ones', () => {
+@@ -40,9 +52,9 @@ test('equal temperament is a clean 100 cents per semitone', () => {
+ });
+ 
+ test('centsBetween is signed and symmetric', () => {
+-  closeTo(centsBetween(TONIC_HZ * 2, TONIC_HZ), 1200, 1e-9);
+-  closeTo(centsBetween(TONIC_HZ, TONIC_HZ * 2), -1200, 1e-9);
+-  assert.equal(centsBetween(TONIC_HZ, TONIC_HZ), 0);
++  closeTo(centsBetween(tonicHz() * 2, tonicHz()), 1200, 1e-9);
++  closeTo(centsBetween(tonicHz(), tonicHz() * 2), -1200, 1e-9);
++  assert.equal(centsBetween(tonicHz(), tonicHz()), 0);
+ });
+ 
+ test('nearestSwarasthana resolves against the true targets, not the tempered grid', () => {
+@@ -51,8 +63,8 @@ test('nearestSwarasthana resolves against the true targets, not the tempered gri
+   // a pitch that sits between the two conventions.
+   assert.equal(nearestSwarasthana(frequencyOf(4, 'just'), 'just'), 4);
+   assert.equal(nearestSwarasthana(frequencyOf(7, 'just'), 'just'), 7);
+-  assert.equal(nearestSwarasthana(TONIC_HZ * 2, 'just'), 12);
+-  assert.equal(nearestSwarasthana(TONIC_HZ / 2, 'just'), -12);
++  assert.equal(nearestSwarasthana(tonicHz() * 2, 'just'), 12);
++  assert.equal(nearestSwarasthana(tonicHz() / 2, 'just'), -12);
+ });
+ 
+ test('nearestSwarasthana picks the closer of two neighbours', () => {
+@@ -109,3 +121,60 @@ test('describe reports the pitch class and octave separately', () => {
+   assert.equal(describe(-11).pitchClass, 1);
+   assert.equal(describe(-11).octave, -1);
+ });
++
++/* -------------------------------------------------------------- the tonic */
++
++test('note names resolve to concert pitch', () => {
++  closeTo(noteToHz('A', 4), 440, 1e-9);
++  closeTo(noteToHz('A', 3), 220, 1e-9);
++  closeTo(noteToHz('C', 4), 261.6256, 0.001);
++  closeTo(noteToHz('A#', 3), 233.0819, 0.001);
++  closeTo(noteToHz('G', 4), 391.9954, 0.001);
++});
++
++test('every offered tonic is a real note', () => {
++  for (const note of NOTE_NAMES) {
++    for (const octave of TONIC_OCTAVES) {
++      const hz = noteToHz(note, octave);
++      assert.ok(Number.isFinite(hz) && hz > 0, `${note}${octave} gave ${hz}`);
++    }
++  }
++  assert.throws(() => noteToHz('H', 4), /unknown note/);
++});
++
++test('the default tonic is A#3', () => {
++  assert.deepEqual(DEFAULT_TONIC, { note: 'A#', octave: 3 });
++  closeTo(tonicHz(), 233.0819, 0.001);
++});
++
++test('changing the tonic retunes every target', () => {
++  withTonic('C', 4, () => {
++    closeTo(tonicHz(), 261.6256, 0.001);
++    closeTo(frequencyOf(0), 261.6256, 0.001);
++    closeTo(frequencyOf(7), 261.6256 * 1.5, 0.001);   // Pa stays a just fifth
++    closeTo(frequencyOf(12), 261.6256 * 2, 0.001);    // upper Sa stays an octave
++  });
++  // and it is restored afterwards
++  closeTo(tonicHz(), 233.0819, 0.001);
++});
++
++test('the ratios themselves do not depend on the tonic', () => {
++  const atDefault = [0, 1, 4, 5, 7, 8, 11, 12].map((s) => frequencyOf(s) / tonicHz());
++  withTonic('G', 4, () => {
++    const atG = [0, 1, 4, 5, 7, 8, 11, 12].map((s) => frequencyOf(s) / tonicHz());
++    atG.forEach((ratio, i) => closeTo(ratio, atDefault[i], 1e-12));
++  });
++});
++
++test('nearest swarasthana follows the tonic', () => {
++  withTonic('C', 4, () => {
++    assert.equal(nearestSwarasthana(261.63), 0);          // C4 is Sa
++    assert.equal(nearestSwarasthana(261.63 * 1.5), 7);    // its fifth is Pa
++    assert.equal(nearestSwarasthana(233.08), -2);         // A#3 is now below Sa
++  });
++});
++
++test('tonic labels use a real sharp glyph', () => {
++  assert.equal(noteLabel('A#', 3), 'A\u266F3');
++  assert.equal(noteLabel('C', 4), 'C4');
++});

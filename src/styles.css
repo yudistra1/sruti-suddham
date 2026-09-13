@@ -90,6 +90,18 @@
   }
   .sruti-chip .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.14em; color:var(--text-3); line-height:1.2; }
   .sruti-chip .val{ font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1; color:var(--brass); }
+  .tonic-picker{ display:flex; align-items:baseline; gap:2px; }
+  .tonic-sel{
+    appearance:none; border:0; background:transparent; cursor:pointer;
+    font-family:var(--fd); font-weight:600; font-size:20px; line-height:1.1;
+    color:var(--brass); padding:0 14px 0 0; margin:0;
+    background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+    background-position:calc(100% - 5px) 60%, calc(100% - 1px) 60%;
+    background-size:4px 4px, 4px 4px; background-repeat:no-repeat;
+  }
+  .tonic-sel.tonic-oct{ font-size:13px; padding-right:12px; }
+  .tonic-sel:focus-visible{ outline:2px solid var(--brass); outline-offset:2px; border-radius:2px; }
+  .tonic-sel option{ font-family:var(--fs); font-size:14px; color:var(--text); background:var(--surface); }
   .sruti-chip .hz{ font-family:var(--fm); font-size:11.5px; color:var(--text-2); font-variant-numeric:tabular-nums; }
 
   /* ---------- controls ---------- */

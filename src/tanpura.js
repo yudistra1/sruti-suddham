@@ -12,7 +12,7 @@
  * "tanpura".
  */
 
-import { TONIC_HZ } from './tuning.js';
+import { tonicHz } from './tuning.js';
 
 const PLUCK_INTERVAL = 1.05;   // seconds between strings
 const SCHEDULE_AHEAD = 1.2;    // seconds of lookahead
@@ -88,11 +88,12 @@ export class Tanpura {
   /** Classic tuning: Pa a fifth below Sa, two Sa, then Sa an octave down. */
   build() {
     const fifth = this.temperament === 'just' ? 3 / 2 : Math.pow(2, 7 / 12);
+    const sa = tonicHz();
     this.strings = [
-      renderString(this.context, (TONIC_HZ * fifth) / 2, 5),
-      renderString(this.context, TONIC_HZ, 5),
-      renderString(this.context, TONIC_HZ, 5),
-      renderString(this.context, TONIC_HZ / 2, 6),
+      renderString(this.context, (sa * fifth) / 2, 5),
+      renderString(this.context, sa, 5),
+      renderString(this.context, sa, 5),
+      renderString(this.context, sa / 2, 6),
     ];
   }
 
@@ -163,14 +164,18 @@ export class Tanpura {
   }
 
   /** Retuning means re-rendering the strings, so restart if we are mid-drone. */
-  setTemperament(temperament) {
-    if (temperament === this.temperament) return;
-    this.temperament = temperament;
+  retune() {
     this.strings = null;
     if (this.playing) {
       this.stop();
       this.start();
     }
+  }
+
+  setTemperament(temperament) {
+    if (temperament === this.temperament) return;
+    this.temperament = temperament;
+    this.retune();
   }
 }
 
