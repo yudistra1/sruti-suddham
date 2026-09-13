@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const ENTRY = join(root, 'src', 'main.js');
-const OUT = join(root, 'dist', 'sruti-mirror.html');
+const OUT = join(root, 'dist', 'sruti-suddham.html');
 
 const IMPORT = /^import\s+[\s\S]*?from\s+['"](.+?)['"];?\s*$/gm;
 const BARE_IMPORT = /^import\s+['"](.+?)['"];?\s*$/gm;
@@ -97,7 +97,7 @@ function build() {
   writeFileSync(OUT, html);
 
   const kb = (Buffer.byteLength(html) / 1024).toFixed(1);
-  console.log(`dist/sruti-mirror.html  ${kb} kB  (${modules.size} modules)`);
+  console.log(`${OUT.slice(root.length + 1)}  ${kb} kB  (${modules.size} modules)`);
 }
 
 build();

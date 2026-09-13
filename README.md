@@ -1,4 +1,4 @@
-# Sruti Mirror
+# Sruti Suddham
 
 A pitch tuner for Carnatic vocal practice. It runs in the browser, plays a
 synthesised tanpura, and — unlike a guitar tuner — tells you *what to do* about
@@ -11,7 +11,7 @@ They show you a needle against equal temperament and leave it there. That is the
 wrong reference for singing against a drone, and a needle on its own does not
 distinguish the four quite different things that go wrong with a held note.
 
-**[Try it →](https://yudistra1.github.io/sruti-mirror/)** (needs a microphone;
+**[Try it →](https://yudistra1.github.io/sruti-suddham/)** (needs a microphone;
 headphones strongly recommended)
 
 ## What it does
@@ -69,8 +69,8 @@ the fretted version.
 ## Running it
 
 ```bash
-git clone https://github.com/yudistra1/sruti-mirror.git
-cd sruti-mirror
+git clone https://github.com/yudistra1/sruti-suddham.git
+cd sruti-suddham
 npm start          # http://localhost:8000
 ```
 
@@ -81,7 +81,7 @@ context. `http://localhost` counts as secure.
 
 ```bash
 npm test           # 53 tests, no dependencies
-npm run build      # -> dist/sruti-mirror.html, one self-contained file
+npm run build      # -> dist/sruti-suddham.html, one self-contained file
 ```
 
 The built file is the whole app inlined into one HTML document, for when you

@@ -47,5 +47,5 @@ createServer(async (request, response) => {
     response.writeHead(404, { 'Content-Type': 'text/plain' }).end('Not found');
   }
 }).listen(port, () => {
-  console.log(`Sruti Mirror  ->  http://localhost:${port}`);
+  console.log(`Sruti Suddham  ->  http://localhost:${port}`);
 });
